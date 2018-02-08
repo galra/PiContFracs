@@ -10,32 +10,32 @@ def set_precision(prec):
 
 class RNNAlgo:
     def __init__(self, params, diff_mat_gen, first_diff_mat, target_val=None, dtype=dec):
-        self.params = params
-        self.diff_mat_gen = diff_mat_gen
-        self.first_diff_mat = first_diff_mat
-        self.target_val = target_val
-        self.dtype = dtype
+        self._params = params
+        self._diff_mat_gen = diff_mat_gen
+        self._first_diff_mat = first_diff_mat
+        self._target_val = target_val
+        self._dtype = dtype
 
         self.gradient_vectors = []
         self.diff_mats = []
-        self.params_log = { p:[] for p in self.params }
+        self.params_log = {p:[] for p in self._params}
 
     def reinitialize(self, params=None, first_diff_mat=None, **kwargs):
         if params is None:
             params = kwargs
         for p in params:
-            self.params[p] = params[p]
+            self._params[p] = params[p]
 
         if first_diff_mat is not None:
-            self.first_diff_mat = first_diff_mat
+            self._first_diff_mat = first_diff_mat
 
     def gen_iterations(self, num_of_iters, iteration_algorithm):
-        self.params_log = { p : [self.params[p]] for p in self.params }
+        self.params_log = {p : [self._params[p]] for p in self._params}
         self.gradient_vectors = []
         self.diff_mats = []
 
-        params = self.params
-        diff_mat = self.first_diff_mat
+        params = self._params
+        diff_mat = self._first_diff_mat
         for i in range(num_of_iters):
             params, diff_mat, gradient_vec = iteration_algorithm(params, diff_mat, i)
             for p in params:
@@ -49,8 +49,8 @@ class RNNAlgo:
     def compare_result(self, parameter, target_val=None):
         if target_val is not None:
             comp_val = target_val
-        elif self.target_val is not None:
-            comp_val = self.target_val
+        elif self._target_val is not None:
+            comp_val = self._target_val
         else:
             raise ValueError('No target value to compare to.')
 

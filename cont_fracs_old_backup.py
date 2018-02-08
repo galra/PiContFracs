@@ -39,7 +39,7 @@ class PiContFrac(basic_algo.PiBasicAlgo):
         i += 1
         a_coeffs = params['a_coeffs']
         b_coeffs = params['b_coeffs']
-        diff_mats_p, diff_mats_q = self.diff_mat_gen(i, a_coeffs, b_coeffs)
+        diff_mats_p, diff_mats_q = self._diff_mat_gen(i, a_coeffs, b_coeffs)
         diff_vec_p, diff_vec_q = diff_mat
         new_vec_p = [ new_mat * diff_vec for new_mat, diff_vec in zip(diff_mats_p, diff_vec_p) ]
         new_vec_q = [ new_mat * diff_vec for new_mat, diff_vec in zip(diff_mats_q, diff_vec_q) ]
@@ -73,25 +73,19 @@ class PiContFrac(basic_algo.PiBasicAlgo):
         mat_p = []
         mat_q = []
         for j in range(len(a_coeffs)):
-            mat_p.append(np.matrix(( (a_i, b_i, 0, 0),
-                                (1, 0, 0, 0),
-                                (i**j, 0, a_i, b_i),
-                                (0, 0, 1, 0)), self.dtype))
+            mat_p.append(np.matrix(((a_i, b_i, 0, 0),), self._dtype))
         for j in range(len(b_coeffs)):
-            mat_p.append(np.matrix(( (a_i, b_i, 0, 0),
-                                (1, 0, 0, 0),
-                                (0, 0, a_i, b_i),
-                                (0, 0, 1, 0)), self.dtype))
+            mat_p.append(np.matrix(( (a_i, b_i, 0, 0),), self._dtype))
         for j in range(len(a_coeffs)):
             mat_q.append(np.matrix(((a_i, b_i, 0, 0),
                                 (1, 0, 0, 0),
                                 (0, 0, a_i, b_i),
-                                (0, 0, 1, 0)), self.dtype))
+                                (0, 0, 1, 0)), self._dtype))
         for j in range(len(b_coeffs)):
             mat_q.append(np.matrix(((a_i, b_i, 0, 0),
                                 (1, 0, 0, 0),
                                 (0, i**j, a_i, b_i),
-                                (0, 0, 1, 0)), self.dtype))
+                                (0, 0, 1, 0)), self._dtype))
         return (mat_p, mat_q)
 
     # def get_derivative(self):
@@ -100,8 +94,8 @@ class PiContFrac(basic_algo.PiBasicAlgo):
     def compare_result(self, target_val=None):
         if target_val is not None:
             comp_val = target_val
-        elif self.target_val is not None:
-            comp_val = self.target_val
+        elif self._target_val is not None:
+            comp_val = self._target_val
         else:
             raise ValueError('No target value to compare to.')
 
