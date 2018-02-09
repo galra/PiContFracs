@@ -4,7 +4,7 @@ from decimal_hashtable import DecimalHashTable
 from decimal import Decimal as dec
 import itertools
 from gen_real_pi import gen_real_pi
-import time
+import csv
 
 class BasicEnumPolyParams:
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_iterations=100, threshold=None, prec=100):
@@ -132,16 +132,31 @@ class MITM:
 
         self.filtered_params = refined_params
 
-    @staticmethod
-    def build_pi_from_params(params):
+    def export_to_csv(self, filename, postfunc):
+        csvfile = open(filename, 'w', newline='')
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(['postproc_func', postfunc])
+        csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]',
+                            'u', 'l', 'c', 'd',
+                            'postfunc(cont_frac)', '(u/pi+pi/l+c)/d'])
+        for ab,ulcd in self.filtered_params:
+            pa, pb = ab
+            u, l, c, d = ulcd
+            pi_cont_frac, postproc_res, modified_pi_expression =self.build_pi_from_params((ab, ulcd))
+            csvwriter.writerow([pa, pb, u, l, c, d,
+                                postproc_res.to_eng_string(), modified_pi_expression.to_eng_string()])
+        csvfile.close()
+
+
+    def build_pi_from_params(self, params):
         real_pi = gen_real_pi()
         ab, ulcd = params
         u,l,c,d = ulcd
         pa, pb = ab
         pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=pa, b_coeffs=pb)
         pi_cont_frac.gen_iterations(3000)
-        pi_expression = (u/real_pi + real_pi/l + c) / d
-        return (pi_cont_frac, self.postproc_func(pi_cont_frac.get_pi()), pi_expression)
+        modified_pi_expression = (u/real_pi + real_pi/l + c) / d
+        return (pi_cont_frac, self.postproc_func(pi_cont_frac.get_pi()), modified_pi_expression)
 
     @staticmethod
     def compare_dec_with_accuracy(d1, d2, accuracy):
