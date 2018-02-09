@@ -98,7 +98,7 @@ class MITM:
 
         self.filtered_params = filtered_params
 
-    def refine_clicks(self, accuracy=10, num_of_iterations=3000):
+    def refine_clicks(self, accuracy=10, num_of_iterations=3000, print_clicks=True):
         refined_params = []
         real_pi = gen_real_pi()
         # pi_cont_frac = cont_fracs.PiContFrac()
@@ -110,9 +110,26 @@ class MITM:
             rhs = self.postproc_func(pi_cont_frac.get_pi())
             lhs = (u/real_pi + real_pi/l + c) / d
             if self.compare_dec_with_accuracy(rhs, lhs, accuracy):
+                if print_clicks
+                    print(ab)
+                    print(ulcd)
+                    print(rhs)
+                    print(lhs)
+                    print('')
                 refined_params.append((ab, ulcd))
 
         self.filtered_params = refined_params
+
+    @staticmethod
+    def build_pi_from_params(params):
+        real_pi = gen_real_pi()
+        ab, ulcd = params
+        u,l,c,d = ulcd
+        pa, pb = ab
+        pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=pa, b_coeffs=pb)
+        pi_cont_frac.gen_iterations(3000)
+        pi_expression = (u/real_pi + real_pi/l + c) / d
+        return (pi_cont_frac, pi_cont_frac.get_pi(), pi_expression)
 
     @staticmethod
     def compare_dec_with_accuracy(d1, d2, accuracy):
