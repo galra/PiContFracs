@@ -57,11 +57,12 @@ class BasicEnumPolyParams:
             print('')
 
 class MITM:
-    def __init__(self, postproc_func=lambda x:x, a_poly_size=3, b_poly_size=3, num_of_iterations=100,
+    def __init__(self, postproc_func=lambda x:x, trunc_integer=True, a_poly_size=3, b_poly_size=3, num_of_iterations=100,
                  threshold=None, prec=50):
         self.bep = BasicEnumPolyParams(a_poly_size=a_poly_size, b_poly_size=b_poly_size,
                                        num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
         self.postproc_func = postproc_func
+        self.trunc_integer = trunc_integer
         self.dec_hashtable = DecimalHashTable(6)
         self.filtered_params = []
 
@@ -72,6 +73,10 @@ class MITM:
     def _iter2hashtalbe(self, itr):
         for pi_cont_frac, pa, pb in itr:
             k = self.postproc_func(pi_cont_frac.get_pi())
+            if not k.is_normal():
+                continue
+            if self.trunc_integer:
+                k -= int(k)
             if k not in self.dec_hashtable:
                 self.dec_hashtable[k] = []
             self.dec_hashtable[k].append((pa, pb))
@@ -93,6 +98,8 @@ class MITM:
                 continue
             else:
                 r = (u/real_pi + real_pi/l + c) / d
+                if self.trunc_integer:
+                    r -= int(r)
                 if r in self.dec_hashtable:
                     filtered_params.extend([ (ab, (u,l,c,d)) for ab in self.dec_hashtable[r] ])
 
@@ -108,9 +115,14 @@ class MITM:
             pi_cont_frac.gen_iterations(num_of_iterations)
             u, l, c, d = ulcd
             rhs = self.postproc_func(pi_cont_frac.get_pi())
+            if not rhs.is_normal():
+                continue
             lhs = (u/real_pi + real_pi/l + c) / d
+            if self.trunc_integer:
+                rhs -= int(rhs)
+                lhs -= int(lhs)
             if self.compare_dec_with_accuracy(rhs, lhs, accuracy):
-                if print_clicks
+                if print_clicks:
                     print(ab)
                     print(ulcd)
                     print(rhs)
