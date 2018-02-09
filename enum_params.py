@@ -141,7 +141,7 @@ class MITM:
         pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=pa, b_coeffs=pb)
         pi_cont_frac.gen_iterations(3000)
         pi_expression = (u/real_pi + real_pi/l + c) / d
-        return (pi_cont_frac, pi_cont_frac.get_pi(), pi_expression)
+        return (pi_cont_frac, self.postproc_func(pi_cont_frac.get_pi()), pi_expression)
 
     @staticmethod
     def compare_dec_with_accuracy(d1, d2, accuracy):
