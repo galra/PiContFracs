@@ -97,6 +97,8 @@ class MITM:
         for u,l,c,d in itertools.product(u_range, l_range, c_range, d_range):
             if d == 0 or l == 0:
                 continue
+            elif abs(c) >= abs(d):
+                continue
             else:
                 r = abs((u/real_pi + real_pi/l + c) / d)
                 if self.trunc_integer:
@@ -106,7 +108,7 @@ class MITM:
 
         self.filtered_params = filtered_params
 
-    def refine_clicks(self, accuracy=10, num_of_iterations=3000, print_clicks=True):
+    def refine_clicks(self, accuracy=10, num_of_iterations=3000, print_clicks=False):
         refined_params = []
         real_pi = gen_real_pi()
         # pi_cont_frac = cont_fracs.PiContFrac()

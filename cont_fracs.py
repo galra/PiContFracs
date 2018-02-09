@@ -174,5 +174,5 @@ class PiContFrac(basic_algo.PiBasicAlgo):
         return self.params_log['pi'][-1].is_normal()
 
     @staticmethod
-    def _array_to_polynom(coeffs, i):
-        return sum([coeffs[j] * i**j for j in range(len(coeffs))])
+    def _array_to_polynom(coeffs, x):
+        return sum([coeffs[j] * x ** j for j in range(len(coeffs))])

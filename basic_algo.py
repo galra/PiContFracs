@@ -72,6 +72,5 @@ class PiBasicAlgo(RNNAlgo):
     def compare_result(self, real_pi=None):
         return super().compare_result('pi', real_pi)
 
-    @staticmethod
-    def iteration_algorithm(params, diff_mat, i):
+    def iteration_algorithm(self, params, diff_mat, i):
         raise NotImplementedError()
