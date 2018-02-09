@@ -89,6 +89,8 @@ class MITM:
         filtered_params = []
 
         for u,l,c,d in itertools.product(u_range, l_range, c_range, d_range):
+            if d.is_zero() or l.is_zero():
+                continue
             r = (u/real_pi + real_pi/l + c) / d
             if r in self.dec_hashtable:
                 filtered_params.extend([ (ab, (u,l,c,d)) for ab in self.dec_hashtable[r] ])
