@@ -75,6 +75,7 @@ class MITM:
             k = self.postproc_func(pi_cont_frac.get_pi())
             if not k.is_normal():
                 continue
+            k = abs(k)
             if self.trunc_integer:
                 k -= int(k)
             if k not in self.dec_hashtable:
@@ -89,7 +90,7 @@ class MITM:
         if isinstance(c_range, int):
             c_range = range(-c_range, c_range+1)
         if isinstance(d_range, int):
-            d_range = range(-d_range, d_range+1)
+            d_range = range(1, d_range+1)
         real_pi = gen_real_pi()
         filtered_params = []
 
@@ -97,7 +98,7 @@ class MITM:
             if d == 0 or l == 0:
                 continue
             else:
-                r = (u/real_pi + real_pi/l + c) / d
+                r = abs((u/real_pi + real_pi/l + c) / d)
                 if self.trunc_integer:
                     r -= int(r)
                 if r in self.dec_hashtable:
@@ -114,10 +115,10 @@ class MITM:
             # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
             pi_cont_frac.gen_iterations(num_of_iterations)
             u, l, c, d = ulcd
-            rhs = self.postproc_func(pi_cont_frac.get_pi())
+            rhs = abs(self.postproc_func(pi_cont_frac.get_pi()))
             if not rhs.is_normal():
                 continue
-            lhs = (u/real_pi + real_pi/l + c) / d
+            lhs = abs((u/real_pi + real_pi/l + c) / d)
             if self.trunc_integer:
                 rhs -= int(rhs)
                 lhs -= int(lhs)
