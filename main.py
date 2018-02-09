@@ -2,6 +2,7 @@
 
 # this is a temporary execution file
 import enum_params
+from decimal import Decimal as dec
 
 # example - this is the standard continuous fraction with sixes. it works.
 # mitm = enum_params.MITM(postproc_func=lambda x:x)
@@ -11,7 +12,13 @@ import enum_params
 # print(mitm.filtered_params)
 
 # default is a,b in Z_2[x]
-mitm = enum_params.MITM(postproc_func=lambda x: 1/x)
+def safe_inverse(x):
+    if x.is_zero():
+        return dec('inf')
+    else:
+        return 1/x
+
+mitm = enum_params.MITM(postproc_func=safe_inverse)
 # a,b polynoms coefficients will be enumerated in [-2,2]
 # one can either set enum_range to set a uniform boundary to all the coefficients,
 # or set a different range to the a's coefficients and b's coefficients.
