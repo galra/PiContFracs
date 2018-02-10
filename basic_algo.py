@@ -9,6 +9,9 @@ def set_precision(prec):
 
 
 class RNNAlgo:
+    class SufficientAccuracy(Exception):
+        pass
+
     def __init__(self, params, diff_mat_gen, first_diff_mat, target_val=None, dtype=dec):
         self._params = params
         self._diff_mat_gen = diff_mat_gen
@@ -37,11 +40,14 @@ class RNNAlgo:
         params = self._params
         diff_mat = self._first_diff_mat
         for i in range(num_of_iters):
-            params, diff_mat, gradient_vec = iteration_algorithm(params, diff_mat, i)
-            for p in params:
-                self.params_log[p].append(params[p])
-            self.diff_mats.append(diff_mat)
-            self.gradient_vectors.append(gradient_vec)
+            try:
+                params, diff_mat, gradient_vec = iteration_algorithm(params, diff_mat, i)
+                for p in params:
+                    self.params_log[p].append(params[p])
+                self.diff_mats.append(diff_mat)
+                self.gradient_vectors.append(gradient_vec)
+            except self.SufficientAccuracy:
+                break
 
     def get_derivative(self):
         return np.multiply(self.compare_result(), self.gradient_vectors[-1])

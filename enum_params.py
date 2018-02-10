@@ -41,7 +41,10 @@ class BasicEnumPolyParams:
             b_params_iterator = itertools.product(*[ range(*r) for r in range_b ])
             for pb in b_params_iterator:
                 pi_cont_frac.reinitialize(pa, pb)
-                pi_cont_frac.gen_iterations(self.num_of_iterations)
+                try:
+                    pi_cont_frac.gen_iterations(self.num_of_iterations)
+                except cont_fracs.ZeroB:
+                    continue
                 yield (pi_cont_frac, pa, pb)
 
     def enum_params(self, enum_range=None, range_a=None, range_b=None, show_progress=True):
