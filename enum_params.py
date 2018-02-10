@@ -135,6 +135,9 @@ class MITM:
 
         self.filtered_params = refined_params
 
+    def get_filtered_params(self):
+        return self.filtered_params
+
     def export_to_csv(self, filename, postfunc):
         csvfile = open(filename, 'w', newline='')
         csvwriter = csv.writer(csvfile)
@@ -149,7 +152,6 @@ class MITM:
             csvwriter.writerow([pa, pb, u, l, c, d,
                                 postproc_res.to_eng_string(), modified_pi_expression.to_eng_string()])
         csvfile.close()
-
 
     def build_pi_from_params(self, params):
         real_pi = gen_real_pi()
