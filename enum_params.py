@@ -68,6 +68,7 @@ class MITM:
         self.trunc_integer = trunc_integer
         self.dec_hashtable = DecimalHashTable(6)
         self.filtered_params = []
+        self.uniq_params = []
 
     def build_hashtable(self, enum_range=None, range_a=None, range_b=None, prec=None, ):
         pg = self.bep.pis_generator(enum_range=enum_range, range_a=range_a, range_b=range_b, prec=prec)
@@ -124,13 +125,17 @@ class MITM:
             # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
             pi_cont_frac.gen_iterations(num_of_iterations)
             u, l, c, d = ulcd
-            rhs = abs(self.postproc_funcs[post_func_ind](pi_cont_frac.get_pi()))
+            signed_rhs = self.postproc_funcs[post_func_ind](pi_cont_frac.get_pi())
+            rhs = abs(signed_rhs)
             if not rhs.is_normal():
                 continue
-            lhs = abs((u/real_pi + real_pi/l + c) / d)
+            signed_lhs = (u/real_pi + real_pi/l + c) / d
+            lhs = abs(signed_lhs)
+            int_rhs = int(rhs)
+            int_lhs = int(lhs)
             if self.trunc_integer:
-                rhs -= int(rhs)
-                lhs -= int(lhs)
+                rhs -= int_rhs
+                lhs -= int_lhs
             if self.compare_dec_with_accuracy(rhs, lhs, accuracy):
                 if print_clicks:
                     print(ab)
@@ -138,11 +143,20 @@ class MITM:
                     print(rhs)
                     print(lhs)
                     print('')
+                u,l,c,d = ulcd
+                if (signed_lhs > 0 and signed_rhs < 0) or (signed_lhs < 0 and signed_rhs > 0):
+                    d *= -1
+                    signed_lhs *= -1
+                c += abs(d) * (int_rhs - int_lhs)
+                ulcd = (u,l,c,d)
                 refined_params.append((ab, ulcd, post_func_ind))
 
         self.filtered_params = refined_params
 
-    def get_nonequivalent_filtered_params(self):
+    def get_uniq_filtered_params(self):
+        return self.uniq_params
+
+    def filter_uniq_params(self):
         non_equiv_params = []
         for params in self.filtered_params:
             is_unique = True
@@ -152,25 +166,50 @@ class MITM:
                     break
             if is_unique:
                 non_equiv_params.append(params)
+        self.uniq_params = non_equiv_params
 
     def _is_equiv_params(self, params1, params2):
-        ab1, ulcd1, _ = params1
-        ab2, ulcd2, _ = params2
+        ab1, ulcd1, post_func_ind1 = params1
+        ab2, ulcd2, post_func_ind2 = params2
+        if post_func_ind1 != 0 or post_func_ind2 != 0:
+            return False
+
         pa1, pb1 = ab1
         pa2, pb2 = ab2
+        if pb1 == pb2:
+            u1, l1, c1, d1 = ulcd1
+            u2, l2, c2, d2 = ulcd2
+            for s in [1, -1]:
+                if u1 == u2 * s and l1 == l2 * s and c1 == c2 * s and d1 == -d2 * s:
+                    return True
+            if pa1 == pa2 or list(pa1) == [ -x for x in pa2 ]:
+                ulcd_ratio = abs(d1 / d2)
+                if u1 == u2 * ulcd_ratio and l1 == l2 / ulcd_ratio and c1 == c2 * ulcd_ratio:
+                    return True
+                if u1 == -u2 * ulcd_ratio and l1 == -l2 / ulcd_ratio and c1 == -c2 * ulcd_ratio:
+                    return True
+            if ulcd1 == ulcd2 and (pa1 == pa2 or list(pa1) == [ -x for x in pa2 ]):
+                return True
+        return False
         # TODO: Finish this
+
+    def fix_ulcd_constant(self, params):
+        ab, ulcd, post_func_ind = params
+        pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
+        # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
+        pi_cont_frac.gen_iterations(20)
 
     def get_filtered_params(self):
         return self.filtered_params
 
-    def export_to_csv(self, filename, postfuncs):
+    def export_to_csv(self, filename, postfuncs, uniq_params=True):
         csvfile = open(filename, 'w', newline='')
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(['postproc_funcs', postfuncs])
         csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'procpost_func index',
                             'u', 'l', 'c', 'd',
                             'postfunc(cont_frac)', '(u/pi+pi/l+c)/d'])
-        for ab,ulcd, post_func_ind in self.filtered_params:
+        for ab,ulcd, post_func_ind in [self.filtered_params, self.uniq_params][uniq_params]:
             pa, pb = ab
             u, l, c, d = ulcd
             pi_cont_frac, postproc_res, modified_pi_expression =self.build_pi_from_params((ab, ulcd, post_func_ind))

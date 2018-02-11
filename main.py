@@ -51,10 +51,15 @@ print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(secon
 # (e.g. list, range object etc.)
 mitm.find_clicks(u_range=4, l_range=4, c_range=4, d_range=4)
 print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
-      (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+      (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
 mitm.refine_clicks()
 print('Finished refining clicks. Number of clicks left: %d. Runtime: %s ' %
       (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-mitm.export_to_csv('results%s' % time.strftime('%M%H%d%m'), postproc_funcs)
-
+mitm.filter_uniq_params()
+print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+      (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+export_filename = 'results%s.csv' % time.strftime('%M%H%d%m')
+mitm.export_to_csv(export_filename, postproc_funcs)
+print('Finished saving results. Filename: %s. Runtime: %s ' %
+      (export_filename, str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
 # the above enumeration is of complexity: 2**6 + 4**4, approximately 8 bits. Should be fine.
