@@ -172,7 +172,7 @@ class MITM:
         ab1, ulcd1, post_func_ind1 = params1
         ab2, ulcd2, post_func_ind2 = params2
         if post_func_ind1 != 0 or post_func_ind2 != 0:
-            return False
+            return (ab1 == ab2 and ulcd1 == ulcd2 and post_func_ind1 == post_func_ind2)
 
         pa1, pb1 = ab1
         pa2, pb2 = ab2
