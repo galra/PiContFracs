@@ -42,7 +42,7 @@ class BasicEnumPolyParams:
             for pb in b_params_iterator:
                 pi_cont_frac.reinitialize(pa, pb)
                 try:
-                    pi_cont_frac.gen_iterations(self.num_of_iterations)
+                    pi_cont_frac.gen_iterations(self.num_of_iterations, 0.00001)
                 except cont_fracs.ZeroB:
                     continue
                 yield (pi_cont_frac, pa, pb)
@@ -60,7 +60,7 @@ class BasicEnumPolyParams:
             print('')
 
 class MITM:
-    def __init__(self, postproc_funcs=lambda x:x, trunc_integer=True, a_poly_size=3, b_poly_size=3, num_of_iterations=100,
+    def __init__(self, postproc_funcs=[lambda x:x], trunc_integer=True, a_poly_size=3, b_poly_size=3, num_of_iterations=100,
                  threshold=None, prec=50):
         self.bep = BasicEnumPolyParams(a_poly_size=a_poly_size, b_poly_size=b_poly_size,
                                        num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
@@ -123,7 +123,7 @@ class MITM:
         for ab, ulcd, post_func_ind in self.filtered_params:
             pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
-            pi_cont_frac.gen_iterations(num_of_iterations)
+            pi_cont_frac.gen_iterations(num_of_iterations, 0.000001)
             u, l, c, d = ulcd
             signed_rhs = self.postproc_funcs[post_func_ind](pi_cont_frac.get_pi())
             rhs = abs(signed_rhs)
@@ -167,6 +167,7 @@ class MITM:
             if is_unique:
                 non_equiv_params.append(params)
         self.uniq_params = non_equiv_params
+        self.filtered_params = self.uniq_params
 
     def _is_equiv_params(self, params1, params2):
         ab1, ulcd1, post_func_ind1 = params1
@@ -197,7 +198,7 @@ class MITM:
         ab, ulcd, post_func_ind = params
         pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
         # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
-        pi_cont_frac.gen_iterations(20)
+        pi_cont_frac.gen_iterations(20, 0.0000001)
 
     def get_filtered_params(self):
         return self.filtered_params
@@ -217,13 +218,13 @@ class MITM:
                                 postproc_res.to_eng_string(), modified_pi_expression.to_eng_string()])
         csvfile.close()
 
-    def build_pi_from_params(self, params):
+    def build_pi_from_params(self, params, iterations=3000):
         real_pi = gen_real_pi()
         ab, ulcd, post_func_ind = params
         u,l,c,d = ulcd
         pa, pb = ab
         pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=pa, b_coeffs=pb)
-        pi_cont_frac.gen_iterations(3000)
+        pi_cont_frac.gen_iterations(iterations, 0.000001)
         modified_pi_expression = (u/real_pi + real_pi/l + c) / d
         return (pi_cont_frac, self.postproc_funcs[post_func_ind](pi_cont_frac.get_pi()), modified_pi_expression)
 

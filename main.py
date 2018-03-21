@@ -24,6 +24,11 @@ class MeasureRuntime():
 # mitm.refine_clicks()
 # print(mitm.filtered_params)
 
+# example - this is for testing a specific set of parameters
+# bep = enum_params.BasicEnumPolyParams()
+# bep.pis_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
+
+
 # default is a,b in Z_2[x]
 def safe_inverse(x):
     if x.is_zero():
@@ -31,35 +36,52 @@ def safe_inverse(x):
     else:
         return 1/x
 
-postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2']
+def main():
+    postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2']
 
-evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
-measure_runtime = MeasureRuntime()
-measure_runtime.start_measure()
-mitm = enum_params.MITM(postproc_funcs=evaluated_postproc_funcs)
-print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-# a,b polynoms coefficients will be enumerated in [-2,2]
-# one can either set enum_range to set a uniform boundary to all the coefficients,
-# or set a different range to the a's coefficients and b's coefficients.
-# the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
-# of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-mitm.build_hashtable(enum_range=2)
-print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-# for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
-# TODO: add n/d instead of 1/d? equivalent to k*pi/l, technically
-# here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
-# (e.g. list, range object etc.)
-mitm.find_clicks(u_range=4, l_range=4, c_range=4, d_range=4)
-print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
-      (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-mitm.refine_clicks()
-print('Finished refining clicks. Number of clicks left: %d. Runtime: %s ' %
-      (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-mitm.filter_uniq_params()
-print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
-      (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-export_filename = 'results%s.csv' % time.strftime('%M%H%d%m')
-mitm.export_to_csv(export_filename, postproc_funcs)
-print('Finished saving results. Filename: %s. Runtime: %s ' %
-      (export_filename, str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-# the above enumeration is of complexity: 2**6 + 4**4, approximately 8 bits. Should be fine.
+    evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
+    measure_runtime = MeasureRuntime()
+    measure_runtime.start_measure()
+    mitm = enum_params.MITM(postproc_funcs=evaluated_postproc_funcs)
+    print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    # a,b polynoms coefficients will be enumerated in [-2,2]
+    # one can either set enum_range to set a uniform boundary to all the coefficients,
+    # or set a different range to the a's coefficients and b's coefficients.
+    # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
+    # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
+    mitm.build_hashtable(enum_range=3)
+    print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
+    # TODO: add n/d instead of 1/d? equivalent to k*pi/l, technically
+    # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
+    # (e.g. list, range object etc.)
+    mitm.find_clicks(u_range=4, l_range=4, c_range=4, d_range=4)
+    mitm.filter_uniq_params()
+    print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
+          (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    mitm.refine_clicks(accuracy=8, num_of_iterations=2000)
+    print('Finished refining clicks, 8 digits accuracy, 2000 iterations. Number of clicks left: %d. Runtime: %s ' %
+          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    mitm.filter_uniq_params()
+    print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+          (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    mitm.refine_clicks(accuracy=12, num_of_iterations=10000)
+    print('Finished refining clicks, 12 digits accuracy, 10000 iterations. Number of clicks left: %d. Runtime: %s ' %
+          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    mitm.filter_uniq_params()
+    print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+          (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    mitm.refine_clicks(accuracy=14, num_of_iterations=40000)
+    print('Finished refining clicks, 14 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
+          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    mitm.filter_uniq_params()
+    print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+          (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    export_filename = 'results_%s.csv' % time.strftime('%M%H_%d%m%y')
+    mitm.export_to_csv(export_filename, postproc_funcs)
+    print('Finished saving results. Filename: %s. Runtime: %s ' %
+          (export_filename, str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    # the above enumeration is of complexity: 2**6 + 4**4, approximately 8 bits. Should be fine.
+
+if __name__ == '__main__':
+    main()
