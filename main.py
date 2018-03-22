@@ -71,12 +71,18 @@ def main():
     mitm.filter_uniq_params()
     print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
           (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-    mitm.refine_clicks(accuracy=14, num_of_iterations=40000)
-    print('Finished refining clicks, 14 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
-          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-    mitm.filter_uniq_params()
-    print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
-          (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    print('---REFINING CAN BE CANCELLED NOW---')
+    try:
+        mitm.refine_clicks(accuracy=14, num_of_iterations=40000)
+        print('Finished refining clicks, 14 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
+              (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+        mitm.filter_uniq_params()
+        print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+              (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    except KeyboardInterrupt as e:
+        print('Canceled refining clicks, 14 digits accuracy, 40000 iterations. Runtime: %s ' %
+              (str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+
     export_filename = 'results_%s.csv' % time.strftime('%M%H_%d%m%y')
     mitm.export_to_csv(export_filename, postproc_funcs)
     print('Finished saving results. Filename: %s. Runtime: %s ' %
