@@ -19,7 +19,7 @@ def safe_inverse(x):
     else:
         return 1/x
 
-def load_enum_csv_as_cont_fracs_csv(csv_path, constant='pi'):
+def load_enum_csv_as_cont_fracs_csv(csv_path, constant=None):
     csvfile_in = open(csv_path)
     csvreader = csv.reader(csvfile_in)
     contfrac_params = []
@@ -38,7 +38,8 @@ def load_enum_csv_as_cont_fracs_csv(csv_path, constant='pi'):
             postproc_funcs = [safe_inverse, lambda x: x, lambda x: x**(type(x)(0.5))]
             continue
         if i == 1:
-            continue
+            if not constant:
+                constant = row[3]
         a_params = eval(row[0])
         b_params = eval(row[1])
         u, l, c, d = [ int(c) for c in row[3:7] ]

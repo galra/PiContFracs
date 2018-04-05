@@ -69,7 +69,7 @@ def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_c
     evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
     measure_runtime = MeasureRuntime()
     measure_runtime.start_measure()
-    mitm = enum_params.MITM(target_generator=target_generator, postproc_funcs=evaluated_postproc_funcs)
+    mitm = enum_params.MITM(target_generator=target_generator, target_name=const, postproc_funcs=evaluated_postproc_funcs)
     print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # a,b polynoms coefficients will be enumerated in [-2,2]
     # one can either set enum_range to set a uniform boundary to all the coefficients,

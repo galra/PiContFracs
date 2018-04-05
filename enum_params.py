@@ -115,13 +115,14 @@ range_a/range_b - should be of the format [first, last+1].
             print('')
 
 class MITM:
-    def __init__(self, target_generator=gen_real_pi, postproc_funcs=[lambda x:x], trunc_integer=True, a_poly_size=3,
+    def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x], trunc_integer=True, a_poly_size=3,
                  b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, enum_only_exp_conv=True, num_of_iterations=100,
                  threshold=None, prec=50):
         self.bep = BasicEnumPolyParams(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                                        num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
                                        num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
         self.target_generator = target_generator
+        self.target_name = target_name
         self.postproc_funcs = postproc_funcs
         self.trunc_integer = trunc_integer
         self.dec_hashtable = DecimalHashTable(6)
@@ -325,7 +326,7 @@ class MITM:
     def export_to_csv(self, filename, postfuncs, uniq_params=False):
         csvfile = open(filename, 'w', newline='')
         csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(['postproc_funcs', postfuncs])
+        csvwriter.writerow(['postproc_funcs', postfuncs, 'target_name', self.target_name])
         csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'procpost_func index',
                             'u', 'l', 'c', 'd',
                             'convergence type', 'convergence rate', 'postfunc(cont_frac)', '(u/pi+pi/l+c)/d'])
