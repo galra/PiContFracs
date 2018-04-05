@@ -372,7 +372,7 @@ False if it's sub exponential (e.g. linear)."""
 
         pair_ratio = [ (delta_pair[i][0], delta_pair[i][1] / delta_pair[i+1][1])
                        for i in range(0, len(delta_pair), 2) if delta_pair[i][1] != 0 and delta_pair[i+1][1] != 0 and
-                      not delta_pair[i][1].is_nan() and not delta_pair[i+1][1].is_nan() ]
+                       not delta_pair[i][1].is_nan() and not delta_pair[i+1][1].is_nan() ]
         odd_ratio = [ (delta_odd[i][0], delta_odd[i][1] / delta_odd[i+1][1])
                       for i in range(0, len(delta_odd), 2) if delta_odd[i][1] != 0 and delta_odd[i+1][1] != 0 and
                       not delta_odd[i][1].is_nan() and not delta_odd[i+1][1].is_nan() ]
@@ -405,14 +405,14 @@ False if it's sub exponential (e.g. linear)."""
                 approach_parameter_pair = mean_pair_ratio**type(mean_pair_ratio)(0.5)
                 approach_parameter_odd = mean_odd_ratio**type(mean_odd_ratio)(0.5)
                 approach_parameter = min(approach_parameter_pair, approach_parameter_odd)
-                approach_coeff_pair = [ abs(delta_pair[i][1] * approach_parameter**(delta_pair[i][0]) /
+                approach_coeff_pair_list = [ abs(delta_pair[i][1] * approach_parameter**(delta_pair[i][0]) /
                                         (1 - approach_parameter**(-2))) for i in range(0, len(delta_pair))
-                                         if delta_pair[i][1] != 0 ]
-                approach_coeff_pair = sum(approach_coeff_pair) / len(approach_coeff_pair)
-                approach_coeff_odd = [ abs(delta_odd[i][1] * approach_parameter**(delta_odd[i][0]) /
+                                         if delta_pair[i][1] != 0 and not delta_pair[i][1].is_nan() ]
+                approach_coeff_pair = sum(approach_coeff_pair_list) / len(approach_coeff_pair_list)
+                approach_coeff_odd_list = [ abs(delta_odd[i][1] * approach_parameter**(delta_odd[i][0]) /
                                        (1 - approach_parameter**(-2))) for i in range(0, len(delta_odd))
-                                       if delta_odd[i][1] != 0 ]
-                approach_coeff_odd = sum(approach_coeff_odd) / len(approach_coeff_odd)
+                                       if delta_odd[i][1] != 0 and not delta_odd[i][1].is_nan() ]
+                approach_coeff_odd = sum(approach_coeff_odd_list) / len(approach_coeff_odd_list)
                 approach_coeff = min(approach_coeff_pair, approach_coeff_odd)
                 approach_parameter = (approach_parameter, approach_coeff)
             else:

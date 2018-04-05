@@ -302,10 +302,11 @@ class MITM:
             try:
                 pi_cont_frac.estimate_approach_type_and_params()
                 approach_type, approach_params = pi_cont_frac.get_approach_type_and_params()
-            except:
+            except Exception as e:
                 print('Problems while estimating the following cf_params in "filter_clicks_by_approach_type"')
                 print('Exception has occurred. Skipping.')
                 print(cf_params)
+                print(e)
                 continue
             if (whitelist and approach_type in whitelist) or (blacklist and approach_type not in blacklist):
                 cf_params = (ab, ulcd, post_func_ind, (approach_type, approach_params))
