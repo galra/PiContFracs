@@ -8,7 +8,7 @@ import csv
 import sys
 
 class BasicEnumPolyParams:
-    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=400,
+    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
                  enum_only_exp_conv = False, threshold=None, prec=100):
         self._a_poly_size = a_poly_size
         self._b_poly_size = b_poly_size
@@ -113,6 +113,7 @@ range_a/range_b - should be of the format [first, last+1].
             iter_num += 1
         if show_progress:
             print('')
+
 
 class MITM:
     def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x], trunc_integer=True, a_poly_size=3,
