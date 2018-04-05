@@ -7,7 +7,7 @@ import enum_params
 from decimal import Decimal as dec
 import time
 import datetime
-from gen_real_consts import gen_real_pi, gen_real_e, gen_feig
+from gen_real_consts import gen_real_pi, gen_real_e, gen_feig, gen_real_euler
 
 class MeasureRuntime():
     def __init__(self):
@@ -39,7 +39,7 @@ def safe_inverse(x):
     else:
         return 1/x
 
-def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_coeffs_range=None,
+def main(poly_coeffs_range=2, ulcd_range=2, const='euler', a_coeffs_range=None, b_coeffs_range=None,
          u_range=None, l_range=None, c_range=None, d_range=None, i=None):
     """supported consts: pi, e, feig(0-3). for feig, i=0,1,2,3 is required."""
     if not a_coeffs_range:
@@ -62,9 +62,11 @@ def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_c
         target_generator = gen_real_pi
     elif const == 'feig':
         target_generator = gen_feig_const
+    elif const == 'euler':
+        target_generator = gen_real_euler
     else:
         raise ValueError('Invalid const.')
-    postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2']
+    postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2', 'lambda x: safe_inverse(x**2)']
 
     evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
     measure_runtime = MeasureRuntime()

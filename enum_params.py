@@ -125,7 +125,7 @@ class MITM:
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
         self.trunc_integer = trunc_integer
-        self.dec_hashtable = DecimalHashTable(6)
+        self.dec_hashtable = DecimalHashTable(9)
         self.filtered_params = []
         self.uniq_params = []
 
