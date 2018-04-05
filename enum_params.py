@@ -162,7 +162,11 @@ class MITM:
         target_value = self.target_generator()
         filtered_params = []
 
-        for u,l,c,d in itertools.product(u_range, l_range, c_range, d_range):
+
+        ulcd_iter_len = len(u_range) * len(l_range) * len(c_range) * len(d_range)
+        progress_percentage=0
+        print('0%', end='')
+        for i, (u, l, c, d) in enumerate(itertools.product(u_range, l_range, c_range, d_range)):
             if d == 0 or l == 0:
                 continue
             elif abs(c) >= abs(d):
@@ -173,14 +177,20 @@ class MITM:
                     r -= int(r)
                 if r in self.dec_hashtable:
                     filtered_params.extend([ (ab, (u,l,c,d), post_func_ind, None) for ab, post_func_ind in self.dec_hashtable[r] ])
-
+            if int(100 * i / ulcd_iter_len) > progress_percentage:
+                progress_percentage = int(100 * i / ulcd_iter_len)
+                print('\r%d%%' % progress_percentage, end='')
+        print('\r', end='')
         self.filtered_params = filtered_params
 
     def refine_clicks(self, accuracy=10, num_of_iterations=3000, print_clicks=False):
         refined_params = []
         target_value = self.target_generator()
         # pi_cont_frac = cont_fracs.PiContFrac()
-        for ab, ulcd, post_func_ind, convergence_info in self.filtered_params:
+        progress_percentage = 0
+        filtered_params_len = len(self.filtered_params)
+        print('0%\r', end='')
+        for i, (ab, ulcd, post_func_ind, convergence_info) in enumerate(self.filtered_params):
             pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             pi_cont_frac.set_approach_type_and_params(convergence_info)
             # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
@@ -211,7 +221,9 @@ class MITM:
                 c += d * (int(signed_rhs) - int(signed_lhs))
                 ulcd = (u,l,c,d)
                 refined_params.append((ab, ulcd, post_func_ind, convergence_info))
-
+            if int(100 * i / filtered_params_len) > progress_percentage:
+                progress_percentage = int(100 * i / filtered_params_len)
+                print('%d%%\r' % progress_percentage, end='')
         self.filtered_params = refined_params
 
     def get_uniq_filtered_params(self):
@@ -274,8 +286,12 @@ class MITM:
         # else:
         params_list = self.filtered_params
 
+        progress_percentage = 0
+        filtered_params_len = len(params_list)
+        print('0%\r', end='')
+
         filtered_params_list = []
-        for cf_params in params_list:
+        for i, cf_params in enumerate(params_list):
             ab, ulcd, post_func_ind, convergence_info = cf_params
             pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             if pi_cont_frac.is_convergence_exponential():
@@ -285,7 +301,9 @@ class MITM:
                 print(cf_params)
                 pi_cont_frac.estimate_approach_type_and_params()
                 print(pi_cont_frac.get_approach_type_and_params())
-
+            if int(100 * i / filtered_params_len) > progress_percentage:
+                progress_percentage = int(100 * i / filtered_params_len)
+                print('%d%%\r' % progress_percentage, end='')
         # if filter_uniq_list:
         #     self.uniq_params = params_list
         # else:
@@ -301,8 +319,12 @@ class MITM:
         # else:
         params_list = self.filtered_params
 
+        progress_percentage = 0
+        filtered_params_len = len(params_list)
+        print('0%\r', end='')
+
         filtered_params_list = []
-        for cf_params in params_list:
+        for i, cf_params in enumerate(params_list):
             ab, ulcd, post_func_ind, convergence_info = cf_params
             pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             try:
@@ -317,6 +339,9 @@ class MITM:
             if (whitelist and approach_type in whitelist) or (blacklist and approach_type not in blacklist):
                 cf_params = (ab, ulcd, post_func_ind, (approach_type, approach_params))
                 filtered_params_list.append(cf_params)
+            if int(100 * i / filtered_params_len) > progress_percentage:
+                progress_percentage = int(100 * i / filtered_params_len)
+                print('%d%%\r' % progress_percentage, end='')
 
         # if filter_uniq_list:
         #     self.uniq_params = params_list
