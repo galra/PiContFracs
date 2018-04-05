@@ -2,9 +2,9 @@ import numpy as np
 import basic_algo
 from decimal import Decimal as dec
 import decimal
-from gen_real_pi import gen_real_pi
+from gen_real_consts import gen_real_pi
 import math
-import time
+import scipy.stats
 
 # used to avoid numpy casting int into numpy.int32/64, which doesn't handle bignums
 # class myint(int):
@@ -15,8 +15,12 @@ class ZeroB(Exception):
     pass
 
 
+# The default diff_mat and first_diff_mat compute the following:
+#   The first diff matrix is a_0 = a_0 / 1
+#   then the i'th iteration (a_0 is the 0'th iteration) is a_0 + b_1 / (a1 + b_2 / (... + b_i / a_i))
 class PiContFrac(basic_algo.PiBasicAlgo):
-    def __init__(self, a_coeffs, b_coeffs, avoid_zero_b=False, check_b_threshold=False, b_threshold=10**10, diff_mat_gen=None,
+    # if b_n = 0 then we get a rational number, and should skip this results. This is what avoid_zero_b for.
+    def __init__(self, a_coeffs, b_coeffs, avoid_zero_b=True, check_b_threshold=False, b_threshold=10**10, diff_mat_gen=None,
                  first_diff_mat=None, target_val=None, logging=False, dtype=int):
         if diff_mat_gen is None:
             diff_mat_gen = self._default_diff_mat_gen
@@ -25,6 +29,12 @@ class PiContFrac(basic_algo.PiBasicAlgo):
 
         self._dtype_0 = dtype(0)
         self._dtype_1 = dtype(1)
+
+        if not isinstance(a_coeffs[0], list) and not isinstance(a_coeffs[0], tuple):
+            a_coeffs = [a_coeffs]
+        if not isinstance(b_coeffs[0], list) and not isinstance(b_coeffs[0], tuple):
+            b_coeffs = [b_coeffs]
+
         params = {'a_coeffs': a_coeffs, 'b_coeffs': b_coeffs, 'pi': 1}
         if first_diff_mat is None:
             self._auto_first_diff_mat = True
@@ -35,9 +45,11 @@ class PiContFrac(basic_algo.PiBasicAlgo):
         self._avoid_zero_b = avoid_zero_b
         self._check_b_threshold = check_b_threshold
         self._b_threshold = dtype(b_threshold)
+        self._approach_type, self._approach_params = 'undefined', 0
         super().__init__(params, diff_mat_gen, first_diff_mat, target_val, logging, dtype)
 
     def reinitialize(self, a_coeffs=None, b_coeffs=None, first_diff_mat=None, **kwargs):
+        self._approach_type, self._approach_params = 'undefined', 0
         params = kwargs
         if a_coeffs:
             params['a_coeffs'] = a_coeffs
@@ -118,12 +130,14 @@ class PiContFrac(basic_algo.PiBasicAlgo):
 
     def _default_diff_mat_gen(self, i, a_coeffs, b_coeffs):
         a2p = PiContFrac._array_to_polynom
-        a_i = a2p(a_coeffs, i)
-        b_i = a2p(b_coeffs, i)
+        # This supports only 1 or 2 polynomials
+        a_i = a2p(a_coeffs[i % len(a_coeffs)], (i + len(a_coeffs)-1) >> (len(a_coeffs)-1))
+        b_i = a2p(b_coeffs[(i-1) % len(b_coeffs)], (i + len(b_coeffs)-1) >> (len(b_coeffs)-1))
         if self._avoid_zero_b and b_i == 0:
             raise ZeroB()
         if self._check_b_threshold and b_i / self.gcd(a_i, b_i) > self._b_threshold:
-            raise self.SufficientAccuracy()
+            # raise self.SufficientAccuracy()
+            pass
         # mat_p = [np.matrix(( (a_i, b_i),
         #                         (1, 0)), self._dtype)]
         # mat_q = [np.matrix(((a_i, b_i),
@@ -147,7 +161,7 @@ class PiContFrac(basic_algo.PiBasicAlgo):
         # first_diff_mat[0].append(np.matrix(((dtype(a_coeffs[0]),), (dtype_1,),), dtype=dtype))
         # first_diff_mat[1].append(np.matrix(((dtype_1,), (dtype_0,)), dtype=dtype))
         # return first_diff_mat
-        return (dtype(a_coeffs[0]), dtype_1), (dtype_1, dtype_0)
+        return (dtype(a_coeffs[0][0]), dtype_1), (dtype_1, dtype_0)
 
     def compare_result(self, target_val=None):
         if target_val is not None:
@@ -168,8 +182,203 @@ class PiContFrac(basic_algo.PiBasicAlgo):
     def get_pi(self):
         return self.params_log['pi'][-1]
 
+    def get_p_q(self):
+        diff_vec_p, diff_vec_q = self.diff_mats[-1]
+        return diff_vec_p[0], diff_vec_q[0]
+
     def is_pi_valid(self):
         return self.params_log['pi'][-1].is_normal()
+
+    def estimate_approach_type_and_params(self):
+        iters = 5000
+        initial_cutoff = 1500
+        iters_step = 500
+        approach_type, approach_params = self._estimate_approach_type_and_params_inner_alg(find_poly_parameter=True,
+                                                                                           iters=iters,
+                                                                                           initial_cutoff=initial_cutoff,
+                                                                                           iters_step=iters_step)
+        while approach_type == 'fast' and initial_cutoff > 0:
+            initial_cutoff >>= 1
+            iters = max(50, iters >> 1)
+            iters_step = max(int((iters-initial_cutoff) / 30), iters_step >> 1)
+            approach_type, approach_params = self._estimate_approach_type_and_params_inner_alg(find_poly_parameter=True,
+                                                                                               iters=iters,
+                                                                                               initial_cutoff=initial_cutoff,
+                                                                                               iters_step=iters_step)
+        self._approach_type = approach_type
+        self._approach_params = approach_params
+        return
+
+    def get_approach_type_and_params(self):
+        return (self._approach_type, self._approach_params)
+
+    def set_approach_type_and_params(self, convergence_info):
+        self._approach_type, self._approach_params = convergence_info
+
+    def is_convergence_exponential(self, find_poly_parameter=False, iters=5000, initial_cutoff=1500,
+                                                     iters_step=500, exponential_threshold=1.1):
+        """Returns true if the convergence type is exponential or over exponential.
+False if it's sub exponential (e.g. linear)."""
+        if iters_step < 6:
+            ValueError('iters_step should be at least 4')
+
+        self.gen_iterations(initial_cutoff, exec_finalize=False)
+
+        return_val = True
+        for i in range(initial_cutoff+iters_step, iters+1, iters_step):
+            p_0, q_0 = self.get_p_q()
+            self.add_iterations(1, exec_finalize=False)
+            p_1, q_1 = self.get_p_q()
+            self.add_iterations(1, exec_finalize=False)
+            p_2, q_2 = self.get_p_q()
+            self.add_iterations(1, exec_finalize=False)
+            p_3, q_3 = self.get_p_q()
+            self.add_iterations(1, exec_finalize=False)
+            p_4, q_4 = self.get_p_q()
+            self.add_iterations(1, exec_finalize=False)
+            p_5, q_5 = self.get_p_q()
+
+            # q_4(p_2q_0-p_0q_2) > q_0(p_4q_2-p_2q_4)
+            lhs_pair = abs(q_4 * (p_2 * q_0 - p_0 * q_2))
+            rhs_pair = abs(q_0 * (p_4 * q_2 - p_2 * q_4))
+            lhs_odd = abs(q_5 * (p_3 * q_1 - p_1 * q_3))
+            rhs_odd = abs(q_1 * (p_5 * q_3 - p_3 * q_5))
+            if (((lhs_pair - rhs_pair) <= (rhs_pair >> 4) ) or
+                    ((lhs_odd - rhs_odd) <= (rhs_odd >> 4))):
+                return_val = False
+                break
+            # -3 for the iterations of res_1, res_2, res_3 that were already executed
+            self.add_iterations(iters_step - 5, exec_finalize=False)
+
+        self.gen_iterations(0)
+        return return_val
+
+    def _estimate_approach_type_and_params_inner_alg(self, find_poly_parameter=False, iters=5000, initial_cutoff=1500,
+                                          iters_step=500, exponential_threshold=1.1):
+        """Returns 'exp', 'over_exp', 'poly', 'undefined', 'fast' and 'mixed', as a tuple of (string,num): (approach_type, approach_parameter)
+    or ('poly', (approach_parameter, R**2))."""
+        if iters_step < 6:
+            ValueError('iters_step should be at least 4')
+
+        approach_type = None
+        approach_parameter = 0
+
+        delta_pair = []
+        delta_odd = []
+        self.gen_iterations(initial_cutoff)
+        res_0 = self.get_pi()
+        self.add_iterations(1)
+        res_1 = self.get_pi()
+        self.add_iterations(1)
+        res_2 = self.get_pi()
+        self.add_iterations(1)
+        res_3 = self.get_pi()
+        self.add_iterations(1)
+        res_4 = self.get_pi()
+        self.add_iterations(1)
+        res_5 = self.get_pi()
+        delta_pair.append((initial_cutoff, abs(res_2 - res_0)))
+        delta_pair.append((initial_cutoff + 2, abs(res_4 - res_2)))
+        delta_odd.append((initial_cutoff + 1, abs(res_3 - res_1)))
+        delta_odd.append((initial_cutoff + 3, abs(res_5 - res_3)))
+
+        for i in range(initial_cutoff+iters_step, iters+1, iters_step):
+            # -3 for the iterations of res_1, res_2, res_3 that were already executed
+            self.add_iterations(iters_step - 5)
+            res_0 = self.get_pi()
+            self.add_iterations(1)
+            res_1 = self.get_pi()
+            self.add_iterations(1)
+            res_2 = self.get_pi()
+            self.add_iterations(1)
+            res_3 = self.get_pi()
+            self.add_iterations(1)
+            res_4 = self.get_pi()
+            self.add_iterations(1)
+            res_5 = self.get_pi()
+            delta_pair.append((i, abs(res_2 - res_0)))
+            delta_pair.append((i + 2, abs(res_4 - res_2)))
+            delta_odd.append((i + 1, abs(res_3 - res_1)))
+            delta_odd.append((i + 3, abs(res_5 - res_3)))
+            # if show_progress and i % 500 == 0:
+            #     print('\r%d' % i, end='')
+        # return (delta_pair, delta_odd)
+        pair_diminish = False
+        odd_diminish = False
+        if len(delta_pair) > 3 and all([ p[1].is_zero() for p in delta_pair[-3:] ]):
+            pair_diminish = True
+        if len(delta_odd) > 3 and all([ p[1].is_zero() for p in delta_odd[-3:] ]):
+            odd_diminish = True
+        # if one diminishes and the other isn't, return 'undefined'
+        if pair_diminish ^ odd_diminish:
+            approach_type = 'undefined'
+        elif pair_diminish and odd_diminish:
+            approach_type = 'fast'
+
+        # if approach_type:
+        #     return (approach_type, approach_parameter)
+
+        pair_ratio = [ (delta_pair[i][0], delta_pair[i][1] / delta_pair[i+1][1])
+                       for i in range(0, len(delta_pair), 2) if delta_pair[i][1] != 0 and delta_pair[i+1][1] != 0 ]
+        odd_ratio = [ (delta_odd[i][0], delta_odd[i][1] / delta_odd[i+1][1])
+                      for i in range(0, len(delta_odd), 2) if delta_odd[i][1] != 0 and delta_odd[i+1][1] != 0 ]
+
+        if len(pair_ratio) < 6:
+            return (approach_type, approach_parameter)
+
+        mean_pair_ratio = sum([ p for i, p in pair_ratio] ) / len(pair_ratio)
+        mean_pair_ratio_avg_square_error = sum([ (r-mean_pair_ratio)**2 for i, r in pair_ratio ]).sqrt() / len(pair_ratio)
+        mean_odd_ratio = sum([ p for i, p in odd_ratio ]) / len(odd_ratio)
+        mean_odd_ratio_avg_square_error = sum([ (r-mean_odd_ratio)**2 for i, r in odd_ratio ]).sqrt() / len(odd_ratio)
+        relative_pair_sq_err = mean_pair_ratio_avg_square_error / mean_pair_ratio
+        relative_odd_sq_err = mean_odd_ratio_avg_square_error / mean_odd_ratio
+        if relative_odd_sq_err > 0.5 or relative_pair_sq_err > 0.5:
+            if all([ i[1] > 2 for i in (pair_ratio[3*int(len(pair_ratio)/4):] +
+                                         odd_ratio[3*int(len(odd_ratio)/4):]) ]):
+
+                approach_type = 'over_exp'
+            else:
+                approach_type = 'undefined'
+        if (relative_odd_sq_err <= 0.5 and relative_pair_sq_err <= 0.5) or approach_type == 'over_exp':
+            is_pair_exp = mean_pair_ratio > exponential_threshold
+            is_odd_exp = mean_odd_ratio > exponential_threshold
+            # in case one is exponential and the other isn't return 'mixed'
+            if is_pair_exp ^ is_odd_exp:
+                approach_type = 'mixed'
+            elif is_pair_exp and is_odd_exp:
+                if approach_type != 'over_exp':
+                    approach_type = 'exp'
+                approach_parameter_pair = mean_pair_ratio**type(mean_pair_ratio)(0.5)
+                approach_parameter_odd = mean_odd_ratio**type(mean_odd_ratio)(0.5)
+                approach_parameter = min(approach_parameter_pair, approach_parameter_odd)
+                approach_coeff_pair = [ abs(delta_pair[i][1] * approach_parameter**(delta_pair[i][0]) /
+                                        (1 - approach_parameter**(-2))) for i in range(0, len(delta_pair))
+                                         if delta_pair[i][1] != 0 ]
+                approach_coeff_pair = sum(approach_coeff_pair) / len(approach_coeff_pair)
+                approach_coeff_odd = [ abs(delta_odd[i][1] * approach_parameter**(delta_odd[i][0]) /
+                                       (1 - approach_parameter**(-2))) for i in range(0, len(delta_odd))
+                                       if delta_odd[i][1] != 0 ]
+                approach_coeff_odd = sum(approach_coeff_odd) / len(approach_coeff_odd)
+                approach_coeff = min(approach_coeff_pair, approach_coeff_odd)
+                approach_parameter = (approach_parameter, approach_coeff)
+            else:
+                approach_type = 'poly'
+
+        if approach_type != 'poly' or not find_poly_parameter:
+            return (approach_type, approach_parameter)
+
+    #     We're requested to find the poly parameter
+        log_x_pair = [ math.log(i) for i, d in delta_pair ]
+        log_y_pair = [ math.log(d) for i, d in delta_pair ]
+        slope_pair, intercept_pair, r_value_pair, p_value_pair, std_err_pair = scipy.stats.linregress(log_x_pair,
+                                                                                                      log_y_pair)
+        log_x_odd = [ math.log(i) for i, d in delta_odd ]
+        log_y_odd = [ math.log(d) for i, d in delta_odd ]
+        slope_odd, intercept_odd, r_value_odd, p_value_odd, std_err_odd = scipy.stats.linregress(log_x_odd, log_y_odd)
+
+        approach_parameter = (min(abs(slope_pair), abs(slope_odd))-1, min(intercept_pair, intercept_odd),
+                              min(r_value_pair**2, r_value_odd**2))
+        return (approach_type, approach_parameter)
 
     @staticmethod
     def _array_to_polynom(coeffs, x):

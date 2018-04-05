@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+# TODO: check for integer roots for p \in Z_3,4[x]
 # this is a temporary execution file
 import enum_params
 from decimal import Decimal as dec
 import time
 import datetime
+from gen_real_consts import gen_real_pi, gen_real_e
 
 class MeasureRuntime():
     def __init__(self):
@@ -42,38 +44,44 @@ def main():
     evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
     measure_runtime = MeasureRuntime()
     measure_runtime.start_measure()
-    mitm = enum_params.MITM(postproc_funcs=evaluated_postproc_funcs)
+    mitm = enum_params.MITM(target_generator=gen_real_e, postproc_funcs=evaluated_postproc_funcs)
     print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # a,b polynoms coefficients will be enumerated in [-2,2]
     # one can either set enum_range to set a uniform boundary to all the coefficients,
     # or set a different range to the a's coefficients and b's coefficients.
     # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
     # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-    mitm.build_hashtable(enum_range=3)
+    mitm.build_hashtable(enum_range=2)
     print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
     # TODO: add n/d instead of 1/d? equivalent to k*pi/l, technically
     # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
     # (e.g. list, range object etc.)
-    mitm.find_clicks(u_range=4, l_range=4, c_range=4, d_range=4)
+    mitm.find_clicks(u_range=2, l_range=2, c_range=2, d_range=2)
     mitm.filter_uniq_params()
     print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-    mitm.refine_clicks(accuracy=8, num_of_iterations=2000)
+    mitm.filter_only_exp_convergence()
+    print('Finished fast filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
+          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    mitm.filter_clicks_by_approach_type()
+    print('Finished full filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
+          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    mitm.refine_clicks(accuracy=10, num_of_iterations=4000)
     print('Finished refining clicks, 8 digits accuracy, 2000 iterations. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-    mitm.filter_uniq_params()
-    print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
-          (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-    mitm.refine_clicks(accuracy=12, num_of_iterations=10000)
-    print('Finished refining clicks, 12 digits accuracy, 10000 iterations. Number of clicks left: %d. Runtime: %s ' %
-          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-    mitm.filter_uniq_params()
-    print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
-          (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    # mitm.filter_uniq_params()
+    # print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+    #       (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    # mitm.refine_clicks(accuracy=12, num_of_iterations=10000)
+    # print('Finished refining clicks, 12 digits accuracy, 10000 iterations. Number of clicks left: %d. Runtime: %s ' %
+    #       (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    # mitm.filter_uniq_params()
+    # print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+    #       (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     print('---REFINING CAN BE CANCELLED NOW---')
     try:
-        mitm.refine_clicks(accuracy=14, num_of_iterations=40000)
+        mitm.refine_clicks(accuracy=15, num_of_iterations=2000)
         print('Finished refining clicks, 14 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
         mitm.filter_uniq_params()
