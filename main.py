@@ -64,7 +64,6 @@ def main(poly_coeffs_range=7, ulcd_range=20, const='pi', print_surprising_nonexp
         target_generator = consts_generators[const]
     else:
         raise ValueError('Invalid const.')
-    
     postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2', 'lambda x: safe_inverse(x**2)']
 
     evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
