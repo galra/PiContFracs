@@ -39,7 +39,7 @@ def safe_inverse(x):
     else:
         return 1/x
 
-def main(poly_coeffs_range=2, ulcd_range=2, const='pi', print_surprising_nonexp_contfracs=False, a_coeffs_range=None,
+def main(poly_coeffs_range=7, ulcd_range=20, const='pi', print_surprising_nonexp_contfracs=False, a_coeffs_range=None,
          b_coeffs_range=None, u_range=None, l_range=None, c_range=None, d_range=None, i=None):
     """supported consts: pi, e, feig(0-3), euler_masch. for feig, i=0,1,2,3 is required."""
     if not a_coeffs_range:
