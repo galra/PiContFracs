@@ -189,10 +189,10 @@ class PiContFrac(basic_algo.PiBasicAlgo):
     def is_pi_valid(self):
         return self.params_log['pi'][-1].is_normal()
 
-    def estimate_approach_type_and_params(self):
-        iters = 5000
-        initial_cutoff = 1500
-        iters_step = 500
+    def estimate_approach_type_and_params(self, iters=600, initial_cutoff=200, iters_step=50):
+        # iters = 5000
+        # initial_cutoff = 1500
+        # iters_step = 500
         approach_type, approach_params = self._estimate_approach_type_and_params_inner_alg(find_poly_parameter=True,
                                                                                            iters=iters,
                                                                                            initial_cutoff=initial_cutoff,
@@ -225,8 +225,8 @@ class PiContFrac(basic_algo.PiBasicAlgo):
     def set_approach_type_and_params(self, convergence_info):
         self._approach_type, self._approach_params = convergence_info
 
-    def is_convergence_exponential(self, find_poly_parameter=False, iters=5000, initial_cutoff=1500,
-                                                     iters_step=500, exponential_threshold=1.1):
+    def is_convergence_exponential(self, find_poly_parameter=False, iters=600, initial_cutoff=200, iters_step=50,
+                                   exponential_threshold=1.1):
         """Returns true if the convergence type is exponential or over exponential.
 False if it's sub exponential (e.g. linear)."""
         if iters_step < 6:

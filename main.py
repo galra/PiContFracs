@@ -7,7 +7,7 @@ import enum_params
 from decimal import Decimal as dec
 import time
 import datetime
-from gen_real_consts import gen_real_pi, gen_real_e, gen_feig
+from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch
 
 class MeasureRuntime():
     def __init__(self):
@@ -39,9 +39,9 @@ def safe_inverse(x):
     else:
         return 1/x
 
-def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_coeffs_range=None,
-         u_range=None, l_range=None, c_range=None, d_range=None, i=None):
-    """supported consts: pi, e, feig(0-3). for feig, i=0,1,2,3 is required."""
+def main(poly_coeffs_range=2, ulcd_range=2, const='pi', print_surprising_nonexp_contfracs=False, a_coeffs_range=None,
+         b_coeffs_range=None, u_range=None, l_range=None, c_range=None, d_range=None, i=None):
+    """supported consts: pi, e, feig(0-3), euler_masch. for feig, i=0,1,2,3 is required."""
     if not a_coeffs_range:
         a_coeffs_range = poly_coeffs_range
     if not b_coeffs_range:
@@ -55,13 +55,13 @@ def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_c
     if not d_range:
         d_range = ulcd_range
 
-    gen_feig_const = lambda: gen_feig(i)
-    if const == 'e':
-        target_generator = gen_real_e
-    elif const == 'pi':
-        target_generator = gen_real_pi
-    elif const == 'feig':
-        target_generator = gen_feig_const
+    gen_real_feig_const = lambda: gen_real_feig(i)
+    consts_generators = {'e': gen_real_e,
+                         'pi': gen_real_pi,
+                         'feig': gen_real_feig_const,
+                         'euler_masch': gen_real_euler_masch}
+    if const in consts_generators:
+        target_generator = consts_generators[const]
     else:
         raise ValueError('Invalid const.')
     postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2']
@@ -69,6 +69,8 @@ def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_c
     evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
     measure_runtime = MeasureRuntime()
     measure_runtime.start_measure()
+    if const == 'feig':
+        const = 'feig, %d' % i
     mitm = enum_params.MITM(target_generator=target_generator, target_name=const, postproc_funcs=evaluated_postproc_funcs)
     print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # a,b polynoms coefficients will be enumerated in [-2,2]
@@ -86,7 +88,7 @@ def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_c
     mitm.filter_uniq_params()
     print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-    mitm.filter_only_exp_convergence()
+    mitm.filter_only_exp_convergence(print_surprising_nonexp_contfracs)
     print('Finished fast filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     mitm.filter_clicks_by_approach_type()

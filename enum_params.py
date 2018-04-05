@@ -8,7 +8,7 @@ import csv
 import sys
 
 class BasicEnumPolyParams:
-    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
+    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=400,
                  enum_only_exp_conv = False, threshold=None, prec=100):
         self._a_poly_size = a_poly_size
         self._b_poly_size = b_poly_size
@@ -267,7 +267,7 @@ class MITM:
         return False
         # TODO: Finish this
 
-    def filter_only_exp_convergence(self):  # , filter_uniq_list=True):
+    def filter_only_exp_convergence(self, print_surprising_nonexp_contfracs=False):  # , filter_uniq_list=True):
         # if filter_uniq_list:
         #     params_list = self.uniq_params
         # else:
@@ -279,6 +279,11 @@ class MITM:
             pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             if pi_cont_frac.is_convergence_exponential():
                 filtered_params_list.append(cf_params)
+            elif print_surprising_nonexp_contfracs:
+                print('Surprising non-exponential convergence continuous fraction:')
+                print(cf_params)
+                pi_cont_frac.estimate_approach_type_and_params()
+                print(pi_cont_frac.get_approach_type_and_params())
 
         # if filter_uniq_list:
         #     self.uniq_params = params_list
