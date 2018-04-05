@@ -206,7 +206,7 @@ class MITM:
                 if (signed_lhs > 0 and signed_rhs < 0) or (signed_lhs < 0 and signed_rhs > 0):
                     d *= -1
                     signed_lhs *= -1
-                c += abs(d) * (int_rhs - int_lhs)
+                c += d * (int(signed_rhs) - int(signed_lhs))
                 ulcd = (u,l,c,d)
                 refined_params.append((ab, ulcd, post_func_ind, convergence_info))
 
@@ -309,11 +309,9 @@ class MITM:
         # else:
         self.filtered_params = filtered_params_list
 
-    def fix_ulcd_constant(self, params):
-        ab, ulcd, post_func_ind = params
-        pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
-        # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
-        pi_cont_frac.gen_iterations(20)
+    def fix_ulcd_constant(self, d, postproc_res, ulcd_res):
+        delta_c = (int(postproc_res) - int(ulcd_res)) * d
+        return delta_c
 
     def get_filtered_params(self):
         return self.filtered_params
