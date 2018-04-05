@@ -1,0 +1,2 @@
+postproc_funcs,"['safe_inverse', 'lambda x: x', 'lambda x: x**2']",target_name,euler
+"a poly [a_0, a_1, ...]","b poly  [b_0, b_1, ...]",procpost_func index,u,l,c,d,convergence type,convergence rate,postfunc(cont_frac),(u/pi+pi/l+c)/d
