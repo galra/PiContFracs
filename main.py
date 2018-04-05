@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 
 # TODO: check for integer roots for p \in Z_3,4[x]
-# TODO: fix the ulcd constant
 # TODO: fix the convergence params (usecase: the e contfracs: 'results_5303_050418.csv'
 # this is a temporary execution file
 import enum_params
 from decimal import Decimal as dec
 import time
 import datetime
-from gen_real_consts import gen_real_pi, gen_real_e
+from gen_real_consts import gen_real_pi, gen_real_e, gen_feig
 
 class MeasureRuntime():
     def __init__(self):
@@ -40,26 +39,50 @@ def safe_inverse(x):
     else:
         return 1/x
 
-def main():
+def main(poly_coeffs_range=2, ulcd_range=2, const='pi', a_coeffs_range=None, b_coeffs_range=None,
+         u_range=None, l_range=None, c_range=None, d_range=None, i=None):
+    """supported consts: pi, e, feig(0-3). for feig, i=0,1,2,3 is required."""
+    if not a_coeffs_range:
+        a_coeffs_range = poly_coeffs_range
+    if not b_coeffs_range:
+        b_coeffs_range = poly_coeffs_range
+    if not u_range:
+        u_range = ulcd_range
+    if not l_range:
+        l_range = ulcd_range
+    if not c_range:
+        c_range = ulcd_range
+    if not d_range:
+        d_range = ulcd_range
+
+    gen_feig_const = lambda: gen_feig(i)
+    if const == 'e':
+        target_generator = gen_real_e
+    elif const == 'pi':
+        target_generator = gen_real_pi
+    elif const == 'feig':
+        target_generator = gen_feig_const
+    else:
+        raise ValueError('Invalid const.')
     postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2']
 
     evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
     measure_runtime = MeasureRuntime()
     measure_runtime.start_measure()
-    mitm = enum_params.MITM(target_generator=gen_real_e, postproc_funcs=evaluated_postproc_funcs)
+    mitm = enum_params.MITM(target_generator=target_generator, postproc_funcs=evaluated_postproc_funcs)
     print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # a,b polynoms coefficients will be enumerated in [-2,2]
     # one can either set enum_range to set a uniform boundary to all the coefficients,
     # or set a different range to the a's coefficients and b's coefficients.
     # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
     # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-    mitm.build_hashtable(enum_range=2)
+    mitm.build_hashtable(enum_range=poly_coeffs_range)
     print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
     # TODO: add n/d instead of 1/d? equivalent to k*pi/l, technically
     # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
     # (e.g. list, range object etc.)
-    mitm.find_clicks(u_range=2, l_range=2, c_range=2, d_range=2)
+    mitm.find_clicks(u_range=u_range, l_range=l_range, c_range=c_range, d_range=d_range)
     mitm.filter_uniq_params()
     print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))

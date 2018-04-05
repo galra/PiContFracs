@@ -298,8 +298,14 @@ class MITM:
         for cf_params in params_list:
             ab, ulcd, post_func_ind, convergence_info = cf_params
             pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
-            pi_cont_frac.estimate_approach_type_and_params()
-            approach_type, approach_params = pi_cont_frac.get_approach_type_and_params()
+            try:
+                pi_cont_frac.estimate_approach_type_and_params()
+                approach_type, approach_params = pi_cont_frac.get_approach_type_and_params()
+            except:
+                print('Problems while estimating the following cf_params in "filter_clicks_by_approach_type"')
+                print('Exception has occurred. Skipping.')
+                print(cf_params)
+                continue
             if (whitelist and approach_type in whitelist) or (blacklist and approach_type not in blacklist):
                 cf_params = (ab, ulcd, post_func_ind, (approach_type, approach_params))
                 filtered_params_list.append(cf_params)

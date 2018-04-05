@@ -205,6 +205,9 @@ class PiContFrac(basic_algo.PiBasicAlgo):
                                                                                                iters=iters,
                                                                                                initial_cutoff=initial_cutoff,
                                                                                                iters_step=iters_step)
+            if approach_params == 'kukuriku':
+                print('kukuriku')
+                return approach_type, 1
         self._approach_type = approach_type
         self._approach_params = approach_params
         return
@@ -278,9 +281,21 @@ False if it's sub exponential (e.g. linear)."""
         self.add_iterations(1)
         res_5 = self.get_pi()
         delta_pair.append((initial_cutoff, abs(res_2 - res_0)))
+        if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+            print('first, res_0: %s' % res_0.to_eng_string())
+            print('first, res_2: %s' % res_2.to_eng_string())
         delta_pair.append((initial_cutoff + 2, abs(res_4 - res_2)))
+        if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+            print('first, res_2: %s' % res_2.to_eng_string())
+            print('first, res_4: %s' % res_4.to_eng_string())
         delta_odd.append((initial_cutoff + 1, abs(res_3 - res_1)))
+        if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+            print('first, res_1: %s' % res_1.to_eng_string())
+            print('first, res_3: %s' % res_3.to_eng_string())
         delta_odd.append((initial_cutoff + 3, abs(res_5 - res_3)))
+        if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+            print('first, res_3: %s' % res_3.to_eng_string())
+            print('first, res_5: %s' % res_5.to_eng_string())
 
         for i in range(initial_cutoff+iters_step, iters+1, iters_step):
             # -3 for the iterations of res_1, res_2, res_3 that were already executed
@@ -297,9 +312,21 @@ False if it's sub exponential (e.g. linear)."""
             self.add_iterations(1)
             res_5 = self.get_pi()
             delta_pair.append((i, abs(res_2 - res_0)))
+            if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+                print('res_0: %s' % res_0.to_eng_string())
+                print('res_2: %s' % res_2.to_eng_string())
             delta_pair.append((i + 2, abs(res_4 - res_2)))
+            if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+                print('res_2: %s' % res_2.to_eng_string())
+                print('res_4: %s' % res_4.to_eng_string())
             delta_odd.append((i + 1, abs(res_3 - res_1)))
+            if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+                print('res_1: %s' % res_1.to_eng_string())
+                print('res_3: %s' % res_3.to_eng_string())
             delta_odd.append((i + 3, abs(res_5 - res_3)))
+            if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+                print('res_3: %s' % res_3.to_eng_string())
+                print('res_5: %s' % res_5.to_eng_string())
             # if show_progress and i % 500 == 0:
             #     print('\r%d' % i, end='')
         # return (delta_pair, delta_odd)
@@ -332,7 +359,7 @@ False if it's sub exponential (e.g. linear)."""
         mean_odd_ratio_avg_square_error = sum([ (r-mean_odd_ratio)**2 for i, r in odd_ratio ]).sqrt() / len(odd_ratio)
         relative_pair_sq_err = mean_pair_ratio_avg_square_error / mean_pair_ratio
         relative_odd_sq_err = mean_odd_ratio_avg_square_error / mean_odd_ratio
-        if relative_odd_sq_err > 0.5 or relative_pair_sq_err > 0.5:
+        if relative_pair_sq_err > 0.5 or relative_odd_sq_err > 0.5:
             if all([ i[1] > 2 for i in (pair_ratio[3*int(len(pair_ratio)/4):] +
                                          odd_ratio[3*int(len(odd_ratio)/4):]) ]):
 
