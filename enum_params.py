@@ -182,7 +182,7 @@ class MITM:
             pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             pi_cont_frac.set_approach_type_and_params(convergence_info)
             # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
-            pi_cont_frac.gen_iterations(num_of_iterations, dec('1E-%d' % (accuracy+3)))
+            pi_cont_frac.gen_iterations(num_of_iterations, dec('1E-%d' % (accuracy+60)))
             u, l, c, d = ulcd
             signed_rhs = self.postproc_funcs[post_func_ind](pi_cont_frac.get_pi())
             rhs = abs(signed_rhs)

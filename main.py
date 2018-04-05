@@ -67,7 +67,7 @@ def main():
     mitm.filter_clicks_by_approach_type()
     print('Finished full filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-    mitm.refine_clicks(accuracy=10, num_of_iterations=4000)
+    mitm.refine_clicks(accuracy=10, num_of_iterations=4000, print_clicks=True)
     print('Finished refining clicks, 8 digits accuracy, 2000 iterations. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     # mitm.filter_uniq_params()
@@ -81,7 +81,7 @@ def main():
     #       (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     print('---REFINING CAN BE CANCELLED NOW---')
     try:
-        mitm.refine_clicks(accuracy=15, num_of_iterations=2000)
+        mitm.refine_clicks(accuracy=15, num_of_iterations=2000, print_clicks=True)
         print('Finished refining clicks, 14 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
         mitm.filter_uniq_params()
