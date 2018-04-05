@@ -205,9 +205,16 @@ class PiContFrac(basic_algo.PiBasicAlgo):
                                                                                                iters=iters,
                                                                                                initial_cutoff=initial_cutoff,
                                                                                                iters_step=iters_step)
-            if approach_params == 'kukuriku':
-                print('kukuriku')
-                return approach_type, 1
+        if initial_cutoff == 0:
+            iters = 50
+            iters_step = 1
+            while approach_type == 'fast' and iters > 10:
+                initial_cutoff >>= 1
+                iters -= 5
+                approach_type, approach_params = self._estimate_approach_type_and_params_inner_alg(find_poly_parameter=True,
+                                                                                                   iters=iters,
+                                                                                                   initial_cutoff=initial_cutoff,
+                                                                                                   iters_step=iters_step)
         self._approach_type = approach_type
         self._approach_params = approach_params
         return
@@ -270,32 +277,50 @@ False if it's sub exponential (e.g. linear)."""
         delta_odd = []
         self.gen_iterations(initial_cutoff)
         res_0 = self.get_pi()
+        # if res_0.is_nan():
+        #     print('res_0 nan')
+        #     print(self.get_p_q())
         self.add_iterations(1)
         res_1 = self.get_pi()
+        # if res_1.is_nan():
+        #     print('res_1 nan')
+        #     print(self.get_p_q())
         self.add_iterations(1)
         res_2 = self.get_pi()
+        # if res_2.is_nan():
+        #     print('res_2 nan')
+        #     print(self.get_p_q())
         self.add_iterations(1)
         res_3 = self.get_pi()
+        # if res_3.is_nan():
+        #     print('res_3 nan')
+        #     print(self.get_p_q())
         self.add_iterations(1)
         res_4 = self.get_pi()
+        # if res_4.is_nan():
+        #     print('res_4 nan')
+        #     print(self.get_p_q())
         self.add_iterations(1)
         res_5 = self.get_pi()
+        # if res_5.is_nan():
+        #     print('res_5 nan')
+        #     print(self.get_p_q())
         delta_pair.append((initial_cutoff, abs(res_2 - res_0)))
-        if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
-            print('first, res_0: %s' % res_0.to_eng_string())
-            print('first, res_2: %s' % res_2.to_eng_string())
+        # if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+        #     print('first, res_0: %s' % res_0.to_eng_string())
+        #     print('first, res_2: %s' % res_2.to_eng_string())
         delta_pair.append((initial_cutoff + 2, abs(res_4 - res_2)))
-        if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
-            print('first, res_2: %s' % res_2.to_eng_string())
-            print('first, res_4: %s' % res_4.to_eng_string())
+        # if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+        #     print('first, res_2: %s' % res_2.to_eng_string())
+        #     print('first, res_4: %s' % res_4.to_eng_string())
         delta_odd.append((initial_cutoff + 1, abs(res_3 - res_1)))
-        if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
-            print('first, res_1: %s' % res_1.to_eng_string())
-            print('first, res_3: %s' % res_3.to_eng_string())
+        # if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+        #     print('first, res_1: %s' % res_1.to_eng_string())
+        #     print('first, res_3: %s' % res_3.to_eng_string())
         delta_odd.append((initial_cutoff + 3, abs(res_5 - res_3)))
-        if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
-            print('first, res_3: %s' % res_3.to_eng_string())
-            print('first, res_5: %s' % res_5.to_eng_string())
+        # if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+        #     print('first, res_3: %s' % res_3.to_eng_string())
+        #     print('first, res_5: %s' % res_5.to_eng_string())
 
         for i in range(initial_cutoff+iters_step, iters+1, iters_step):
             # -3 for the iterations of res_1, res_2, res_3 that were already executed
@@ -312,21 +337,21 @@ False if it's sub exponential (e.g. linear)."""
             self.add_iterations(1)
             res_5 = self.get_pi()
             delta_pair.append((i, abs(res_2 - res_0)))
-            if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
-                print('res_0: %s' % res_0.to_eng_string())
-                print('res_2: %s' % res_2.to_eng_string())
+            # if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+            #     print('res_0: %s' % res_0.to_eng_string())
+            #     print('res_2: %s' % res_2.to_eng_string())
             delta_pair.append((i + 2, abs(res_4 - res_2)))
-            if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
-                print('res_2: %s' % res_2.to_eng_string())
-                print('res_4: %s' % res_4.to_eng_string())
+            # if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
+            #     print('res_2: %s' % res_2.to_eng_string())
+            #     print('res_4: %s' % res_4.to_eng_string())
             delta_odd.append((i + 1, abs(res_3 - res_1)))
-            if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
-                print('res_1: %s' % res_1.to_eng_string())
-                print('res_3: %s' % res_3.to_eng_string())
+            # if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+            #     print('res_1: %s' % res_1.to_eng_string())
+            #     print('res_3: %s' % res_3.to_eng_string())
             delta_odd.append((i + 3, abs(res_5 - res_3)))
-            if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
-                print('res_3: %s' % res_3.to_eng_string())
-                print('res_5: %s' % res_5.to_eng_string())
+            # if not delta_odd[-1][1].is_normal() and not delta_odd[-1][1].is_zero():
+            #     print('res_3: %s' % res_3.to_eng_string())
+            #     print('res_5: %s' % res_5.to_eng_string())
             # if show_progress and i % 500 == 0:
             #     print('\r%d' % i, end='')
         # return (delta_pair, delta_odd)
@@ -346,9 +371,11 @@ False if it's sub exponential (e.g. linear)."""
         #     return (approach_type, approach_parameter)
 
         pair_ratio = [ (delta_pair[i][0], delta_pair[i][1] / delta_pair[i+1][1])
-                       for i in range(0, len(delta_pair), 2) if delta_pair[i][1] != 0 and delta_pair[i+1][1] != 0 ]
+                       for i in range(0, len(delta_pair), 2) if delta_pair[i][1] != 0 and delta_pair[i+1][1] != 0 and
+                      not delta_pair[i][1].is_nan() and not delta_pair[i+1][1].is_nan() ]
         odd_ratio = [ (delta_odd[i][0], delta_odd[i][1] / delta_odd[i+1][1])
-                      for i in range(0, len(delta_odd), 2) if delta_odd[i][1] != 0 and delta_odd[i+1][1] != 0 ]
+                      for i in range(0, len(delta_odd), 2) if delta_odd[i][1] != 0 and delta_odd[i+1][1] != 0 and
+                      not delta_odd[i][1].is_nan() and not delta_odd[i+1][1].is_nan() ]
 
         if len(pair_ratio) < 6:
             return (approach_type, approach_parameter)
