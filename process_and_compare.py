@@ -9,6 +9,7 @@ import math
 import matplotlib.pyplot as plt
 import scipy.stats
 import os
+from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch
 
 dc = decimal.getcontext().prec=150
 
@@ -25,21 +26,33 @@ def load_enum_csv_as_cont_fracs_csv(csv_path, constant=None):
     contfrac_params = []
     postproc_funcs = []
 
-    if constant == 'pi':
-        constant = gen_real_consts.gen_real_pi()
-    elif constant == 'e':
-        constant = gen_real_consts.gen_real_e()
+    consts_generators = {'e': gen_real_e,
+                         'pi': gen_real_pi,
+                         'feig': gen_real_feig,
+                         'euler_masch': gen_real_euler_masch}
+
+    if constant in consts_generators:
+        constant = consts_generators[constant]()
+    elif constant.startswith('feig'):
+        i = int(constant.split(',')[1])
+        constant = consts_generators['feig'](i)
 
     # WARNING: This block is a HUGE security issue!
     for i,row in enumerate(csvreader):
         if i == 0:
-            postproc_funcs = eval(row[1])
-            postproc_funcs = [ eval(p) for p in postproc_funcs ]
+            # postproc_funcs = eval(row[1])
+            # postproc_funcs = [ eval(p) for p in postproc_funcs ]
             postproc_funcs = [safe_inverse, lambda x: x, lambda x: x**(type(x)(0.5))]
             continue
         if i == 1:
             if not constant:
                 constant = row[3]
+                if constant in consts_generators:
+                    constant = consts_generators[constant]()
+                elif constant.startswith('feig'):
+                    i = int(constant.split(',')[1])
+                    constant = consts_generators['feig'](i)
+
         a_params = eval(row[0])
         b_params = eval(row[1])
         u, l, c, d = [ int(c) for c in row[3:7] ]

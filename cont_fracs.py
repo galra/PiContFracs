@@ -189,10 +189,10 @@ class PiContFrac(basic_algo.PiBasicAlgo):
     def is_pi_valid(self):
         return self.params_log['pi'][-1].is_normal()
 
-    def estimate_approach_type_and_params(self):
-        iters = 5000
-        initial_cutoff = 1500
-        iters_step = 500
+    def estimate_approach_type_and_params(self, iters=600, initial_cutoff=200, iters_step=50):
+        # iters = 5000
+        # initial_cutoff = 1500
+        # iters_step = 500
         approach_type, approach_params = self._estimate_approach_type_and_params_inner_alg(find_poly_parameter=True,
                                                                                            iters=iters,
                                                                                            initial_cutoff=initial_cutoff,
@@ -225,8 +225,8 @@ class PiContFrac(basic_algo.PiBasicAlgo):
     def set_approach_type_and_params(self, convergence_info):
         self._approach_type, self._approach_params = convergence_info
 
-    def is_convergence_exponential(self, find_poly_parameter=False, iters=5000, initial_cutoff=1500,
-                                                     iters_step=500, exponential_threshold=1.1):
+    def is_convergence_exponential(self, find_poly_parameter=False, iters=600, initial_cutoff=200, iters_step=50,
+                                   exponential_threshold=1.1):
         """Returns true if the convergence type is exponential or over exponential.
 False if it's sub exponential (e.g. linear)."""
         if iters_step < 6:
@@ -372,7 +372,7 @@ False if it's sub exponential (e.g. linear)."""
 
         pair_ratio = [ (delta_pair[i][0], delta_pair[i][1] / delta_pair[i+1][1])
                        for i in range(0, len(delta_pair), 2) if delta_pair[i][1] != 0 and delta_pair[i+1][1] != 0 and
-                      not delta_pair[i][1].is_nan() and not delta_pair[i+1][1].is_nan() ]
+                       not delta_pair[i][1].is_nan() and not delta_pair[i+1][1].is_nan() ]
         odd_ratio = [ (delta_odd[i][0], delta_odd[i][1] / delta_odd[i+1][1])
                       for i in range(0, len(delta_odd), 2) if delta_odd[i][1] != 0 and delta_odd[i+1][1] != 0 and
                       not delta_odd[i][1].is_nan() and not delta_odd[i+1][1].is_nan() ]
@@ -405,14 +405,14 @@ False if it's sub exponential (e.g. linear)."""
                 approach_parameter_pair = mean_pair_ratio**type(mean_pair_ratio)(0.5)
                 approach_parameter_odd = mean_odd_ratio**type(mean_odd_ratio)(0.5)
                 approach_parameter = min(approach_parameter_pair, approach_parameter_odd)
-                approach_coeff_pair = [ abs(delta_pair[i][1] * approach_parameter**(delta_pair[i][0]) /
+                approach_coeff_pair_list = [ abs(delta_pair[i][1] * approach_parameter**(delta_pair[i][0]) /
                                         (1 - approach_parameter**(-2))) for i in range(0, len(delta_pair))
-                                         if delta_pair[i][1] != 0 ]
-                approach_coeff_pair = sum(approach_coeff_pair) / len(approach_coeff_pair)
-                approach_coeff_odd = [ abs(delta_odd[i][1] * approach_parameter**(delta_odd[i][0]) /
+                                         if delta_pair[i][1] != 0 and not delta_pair[i][1].is_nan() ]
+                approach_coeff_pair = sum(approach_coeff_pair_list) / len(approach_coeff_pair_list)
+                approach_coeff_odd_list = [ abs(delta_odd[i][1] * approach_parameter**(delta_odd[i][0]) /
                                        (1 - approach_parameter**(-2))) for i in range(0, len(delta_odd))
-                                       if delta_odd[i][1] != 0 ]
-                approach_coeff_odd = sum(approach_coeff_odd) / len(approach_coeff_odd)
+                                       if delta_odd[i][1] != 0 and not delta_odd[i][1].is_nan() ]
+                approach_coeff_odd = sum(approach_coeff_odd_list) / len(approach_coeff_odd_list)
                 approach_coeff = min(approach_coeff_pair, approach_coeff_odd)
                 approach_parameter = (approach_parameter, approach_coeff)
             else:
