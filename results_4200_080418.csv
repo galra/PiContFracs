@@ -1,0 +1,2 @@
+postproc_funcs,"['lambda x: dec_sin(x/18)', 'lambda x: 2*dec_sin(x/18)']",target_name,"percolation, 1"
+"a poly [a_0, a_1, ...]","b poly  [b_0, b_1, ...]",procpost_func index,u,l,c,d,convergence type,convergence rate,postfunc(cont_frac),(u/pi+pi/l+c)/d

@@ -6,6 +6,7 @@ import itertools
 from gen_real_consts import gen_real_pi
 import csv
 import sys
+from funcs_sincos import dec_sin
 
 class BasicEnumPolyParams:
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
@@ -109,12 +110,13 @@ range_a/range_b - should be of the format [first, last+1].
             if pi_cont_frac.is_pi_valid() and pi_cont_frac.compare_result() < self.threshold:
                     self.good_params.append({'a': pa, 'b': pb})
             if iter_num % 100 == 0 and show_progress:
-                print('\r%d' % (iter_num), end='')
+                #print('\r%d' % (iter_num), end='')
+                print('%d' % (iter_num), end='\n')
             iter_num += 1
         if show_progress:
             print('')
 
-
+# do we still want to keep the default values here? (some of them require special imports that are not needed otherwise)
 class MITM:
     def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x], trunc_integer=True,
                  hashtable_prec = 6, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
@@ -140,7 +142,16 @@ class MITM:
             cur_cont_frac = pi_cont_frac.get_pi()
             if not cur_cont_frac.is_normal():
                 continue
+            if cur_cont_frac>dec('1E+50') or cur_cont_frac<dec('-1E+50'):#I got trouble when having super large numbers coming going into the sin calc
+                print('problematic number')
+                print(cur_cont_frac)
+                continue
+            if cur_cont_frac<dec('1E-50') and cur_cont_frac>dec('-1E-50'):  # I got trouble when having super small numbers because we use inverse and then they get large and go into the sin calc
+                print('problematic number')
+                print(cur_cont_frac)
+                continue
             for post_func_ind, post_f in enumerate(self.postproc_funcs):
+                # print(cur_cont_frac)
                 k = post_f(cur_cont_frac)
                 if not k.is_normal():
                     continue
@@ -180,7 +191,8 @@ class MITM:
                     filtered_params.extend([ (ab, (u,l,c,d), post_func_ind, None) for ab, post_func_ind in self.dec_hashtable[r] ])
             if int(100 * i / ulcd_iter_len) > progress_percentage:
                 progress_percentage = int(100 * i / ulcd_iter_len)
-                print('\r%d%%' % progress_percentage, end='')
+                # print('\r%d%%' % progress_percentage, end='')
+                print('%d%%' % progress_percentage, end='\n')
         print('\r', end='')
         self.filtered_params = filtered_params
 
@@ -224,7 +236,8 @@ class MITM:
                 refined_params.append((ab, ulcd, post_func_ind, convergence_info))
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
-                print('%d%%\r' % progress_percentage, end='')
+                #print('%d%%\r' % progress_percentage, end='')
+                print('%d%%' % progress_percentage, end='\n')
         self.filtered_params = refined_params
 
     def get_uniq_filtered_params(self):
@@ -304,7 +317,8 @@ class MITM:
                 print(pi_cont_frac.get_approach_type_and_params())
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
-                print('%d%%\r' % progress_percentage, end='')
+                #print('%d%%\r' % progress_percentage, end='')
+                print('%d%%' % progress_percentage, end='\n')
         # if filter_uniq_list:
         #     self.uniq_params = params_list
         # else:
@@ -342,7 +356,8 @@ class MITM:
                 filtered_params_list.append(cf_params)
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
-                print('%d%%\r' % progress_percentage, end='')
+                #print('%d%%\r' % progress_percentage, end='')
+                print('%d%%' % progress_percentage, end='\n')
 
         # if filter_uniq_list:
         #     self.uniq_params = params_list
