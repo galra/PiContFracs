@@ -86,6 +86,7 @@ def main(poly_coeffs_range=7, ulcd_range=20, const='pi', print_surprising_nonexp
     # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
     # (e.g. list, range object etc.)
     mitm.find_clicks(u_range=u_range, l_range=l_range, c_range=c_range, d_range=d_range)
+    mitm.delete_hashtable()
     mitm.filter_uniq_params()
     print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))

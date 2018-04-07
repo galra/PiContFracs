@@ -116,9 +116,9 @@ range_a/range_b - should be of the format [first, last+1].
 
 
 class MITM:
-    def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x], trunc_integer=True, a_poly_size=3,
-                 b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, enum_only_exp_conv=True, num_of_iterations=100,
-                 threshold=None, prec=50):
+    def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x], trunc_integer=True,
+                 hashtable_prec = 6, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
+                 enum_only_exp_conv=True, num_of_iterations=100, threshold=None, prec=50):
         self.bep = BasicEnumPolyParams(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                                        num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
                                        num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
@@ -126,7 +126,8 @@ class MITM:
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
         self.trunc_integer = trunc_integer
-        self.dec_hashtable = DecimalHashTable(6)
+        self.hashtable_prec = hashtable_prec
+        self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
         self.filtered_params = []
         self.uniq_params = []
 
@@ -354,6 +355,10 @@ class MITM:
 
     def get_filtered_params(self):
         return self.filtered_params
+
+    def delete_hashtable(self):
+        del self.dec_hashtable
+        self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
 
     def export_to_csv(self, filename, postfuncs, uniq_params=False):
         csvfile = open(filename, 'w', newline='')
