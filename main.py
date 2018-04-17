@@ -41,7 +41,7 @@ def safe_inverse(x):
     else:
         return 1/x
 
-def main(poly_coeffs_range=6, ulcd_range=10, const='percolation', print_surprising_nonexp_contfracs=False, a_coeffs_range=None,
+def main(poly_coeffs_range=3, ulcd_range=3, const='e', print_surprising_nonexp_contfracs=False, a_coeffs_range=None,
          b_coeffs_range=None, u_range=None, l_range=None, c_range=None, d_range=None, i=0):
     """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
     for percolation, i=0,1 is required"""
@@ -71,7 +71,11 @@ def main(poly_coeffs_range=6, ulcd_range=10, const='percolation', print_surprisi
     else:
         raise ValueError('Invalid const.')
     
+    # our "defult"
     postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2', 'lambda x: safe_inverse(x**2)']
+
+    # trying sqrt on e
+    # postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x.sqrt()', 'lambda x: safe_inverse(x.sqrt())']
 
     # added to capture the percolation constants
     # postproc_funcs = ['lambda x: dec_sin(x/18)', 'lambda x: 2*dec_sin(x/18)', 'lambda x: dec_sin(2*safe_inverse(x)/9)', 'lambda x: 2*dec_sin(2*safe_inverse(x)/9)']
