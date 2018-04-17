@@ -76,7 +76,7 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', print_surprising_nonexp_c
 
     # trying sqrt on e
     # postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x.sqrt()', 'lambda x: safe_inverse(x.sqrt())']
-
+ 
     # added to capture the percolation constants
     # postproc_funcs = ['lambda x: dec_sin(x/18)', 'lambda x: 2*dec_sin(x/18)', 'lambda x: dec_sin(2*safe_inverse(x)/9)', 'lambda x: 2*dec_sin(2*safe_inverse(x)/9)']
 
