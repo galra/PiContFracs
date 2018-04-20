@@ -154,7 +154,11 @@ class MITM:
                 continue
             for post_func_ind, post_f in enumerate(self.postproc_funcs):
                 # print(cur_cont_frac)
-                k = post_f(cur_cont_frac)
+                try:
+                    k = post_f(cur_cont_frac)
+                except:
+                    print(k)
+                    raise
                 if not k.is_normal():
                     continue
                 k = abs(k)

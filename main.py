@@ -42,6 +42,13 @@ def safe_inverse(x):
         return 1/x
 
 
+def safe_sqrt(x):
+    if x < 0:
+        return dec('NaN')
+    else:
+        return x**dec('0.5')
+
+
 def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, apply_interlace=False,
          print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, u_range=None, l_range=None,
          c_range=None, d_range=None, i=0):
@@ -74,7 +81,7 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
         raise ValueError('Invalid const.')
     
     # our "defult"
-    postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2', 'lambda x: safe_inverse(x**2)'] #, 'lambda x: x**dec(0.5)']
+    postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2', 'lambda x: safe_inverse(x**2)', 'safe_sqrt']
 
     # trying sqrt on e
     # postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x.sqrt()', 'lambda x: safe_inverse(x.sqrt())']
