@@ -264,11 +264,7 @@ class MITM:
         self.filtered_params = self.uniq_params
 
     def _is_equiv_params(self, params1, params2):
-        try:
-            ab1, ulcd1, post_func_ind1, convergence_info1 = params1
-        except:
-            print(params1)
-            raise
+        ab1, ulcd1, post_func_ind1, convergence_info1 = params1
         ab2, ulcd2, post_func_ind2, convergence_info2 = params2
         if post_func_ind1 != 0 or post_func_ind2 != 0:
             return (ab1 == ab2 and ulcd1 == ulcd2 and post_func_ind1 == post_func_ind2)
