@@ -41,8 +41,10 @@ def safe_inverse(x):
     else:
         return 1/x
 
-def main(poly_coeffs_range=3, ulcd_range=3, const='e', print_surprising_nonexp_contfracs=False, a_coeffs_range=None,
-         b_coeffs_range=None, u_range=None, l_range=None, c_range=None, d_range=None, i=0):
+
+def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, apply_interlace=False,
+         print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, u_range=None, l_range=None,
+         c_range=None, d_range=None, i=0):
     """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
     for percolation, i=0,1 is required"""
     if not a_coeffs_range:
@@ -72,7 +74,7 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', print_surprising_nonexp_c
         raise ValueError('Invalid const.')
     
     # our "defult"
-    postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2', 'lambda x: safe_inverse(x**2)']
+    postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x**2', 'lambda x: safe_inverse(x**2)'] #, 'lambda x: x**dec(0.5)']
 
     # trying sqrt on e
     # postproc_funcs = ['safe_inverse', 'lambda x: x', 'lambda x: x.sqrt()', 'lambda x: safe_inverse(x.sqrt())']
@@ -90,7 +92,9 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', print_surprising_nonexp_c
         const = 'feig, %d' % i
     if const == 'percolation':
             const = 'percolation, %d' % i
-    mitm = enum_params.MITM(target_generator=target_generator, target_name=const, postproc_funcs=evaluated_postproc_funcs)
+    mitm = enum_params.MITM(target_generator=target_generator, target_name=const, a_poly_size=a_poly_size,
+                            b_poly_size=b_poly_size, num_of_a_polys=[1, 2][apply_interlace],
+                            num_of_b_polys=[1, 2][apply_interlace], postproc_funcs=evaluated_postproc_funcs)
     print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # a,b polynoms coefficients will be enumerated in [-2,2]
     # one can either set enum_range to set a uniform boundary to all the coefficients,

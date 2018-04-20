@@ -6,6 +6,7 @@ import itertools
 from gen_real_consts import gen_real_pi
 import csv
 import sys
+import time
 from funcs_sincos import dec_sin
 
 class BasicEnumPolyParams:
@@ -51,6 +52,7 @@ range_a/range_b - should be of the format [first, last+1].
             if self._num_of_b_polys == 1:
                 range_b = [range_b]
 
+        self.time_measure = 0
         pi_cont_frac = cont_fracs.PiContFrac([0 for i in range_a], [0 for i in range_b])
         a_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in ra ]) for ra in range_a ])
         for pas in a_params_iterator:
@@ -188,7 +190,8 @@ class MITM:
                 if self.trunc_integer:
                     r -= int(r)
                 if r in self.dec_hashtable:
-                    filtered_params.extend([ (ab, (u,l,c,d), post_func_ind, None) for ab, post_func_ind in self.dec_hashtable[r] ])
+                    filtered_params.extend([ (ab, (u, l, c, d), post_func_ind, None)
+                                             for ab, post_func_ind in self.dec_hashtable[r] ])
             if int(100 * i / ulcd_iter_len) > progress_percentage:
                 progress_percentage = int(100 * i / ulcd_iter_len)
                 # print('\r%d%%' % progress_percentage, end='')
@@ -257,7 +260,11 @@ class MITM:
         self.filtered_params = self.uniq_params
 
     def _is_equiv_params(self, params1, params2):
-        ab1, ulcd1, post_func_ind1, convergence_info1 = params1
+        try:
+            ab1, ulcd1, post_func_ind1, convergence_info1 = params1
+        except:
+            print(params1)
+            raise
         ab2, ulcd2, post_func_ind2, convergence_info2 = params2
         if post_func_ind1 != 0 or post_func_ind2 != 0:
             return (ab1 == ab2 and ulcd1 == ulcd2 and post_func_ind1 == post_func_ind2)
@@ -267,11 +274,13 @@ class MITM:
         if len(pa1) != len(pa2) or len(pb1) != len(pb2):
             return False
         if len(pa1) > 1:
-            return all([ self._is_equiv_params((((p1,), pb1), ulcd1, post_func_ind1),
-                                               (((p2,), pb2), ulcd2, post_func_ind2)) for p1, p2 in zip(pa1, pa2)])
+            return all([ self._is_equiv_params((((p1,), pb1), ulcd1, post_func_ind1, convergence_info1),
+                                               (((p2,), pb2), ulcd2, post_func_ind2, convergence_info2))
+                         for p1, p2 in zip(pa1, pa2)])
         if len(pb1) > 1:
-            return all([ self._is_equiv_params(((pa1, (p1,)), ulcd1, post_func_ind1),
-                                               ((pa2, (p2,)), ulcd2, post_func_ind2)) for p1, p2 in zip(pb1, pb2)])
+            return all([ self._is_equiv_params(((pa1, (p1,)), ulcd1, post_func_ind1, convergence_info1),
+                                               ((pa2, (p2,)), ulcd2, post_func_ind2, convergence_info2))
+                         for p1, p2 in zip(pb1, pb2)])
 
         # if were're here, then params1 and params2 are single-element tuples
         pa1, pa2, pb1, pb2 = pa1[0], pa2[0], pb1[0], pb2[0]
