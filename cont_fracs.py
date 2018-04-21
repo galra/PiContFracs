@@ -130,9 +130,8 @@ class PiContFrac(basic_algo.PiBasicAlgo):
 
     def _default_diff_mat_gen(self, i, a_coeffs, b_coeffs):
         a2p = PiContFrac._array_to_polynom
-        # This supports only 1 or 2 polynomials
-        a_i = a2p(a_coeffs[i % len(a_coeffs)], (i + len(a_coeffs)-1) >> (len(a_coeffs)-1))
-        b_i = a2p(b_coeffs[(i-1) % len(b_coeffs)], (i + len(b_coeffs)-1) >> (len(b_coeffs)-1))
+        a_i = a2p(a_coeffs[i % len(a_coeffs)], divmod(i, len(a_coeffs))[0])
+        b_i = a2p(b_coeffs[(i-1) % len(b_coeffs)], divmod(i, len(b_coeffs))[0])
         if self._avoid_zero_b and b_i == 0:
             raise ZeroB()
         if self._check_b_threshold and b_i / self.gcd(a_i, b_i) > self._b_threshold:

@@ -33,6 +33,8 @@ class MeasureRuntime():
 # bep = enum_params.BasicEnumPolyParams()
 # bep.pis_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
 
+# example - this is for interlace
+# main(a_coeffs_range=[[[2, 3]], [[5, 6]]], b_coeffs_range=[[[1, 2]], [[-9, -7]]], a_interlace=2, b_interlace=2)
 
 # default is a,b in Z_2[x]
 def safe_inverse(x):
@@ -49,7 +51,7 @@ def safe_sqrt(x):
         return x**dec('0.5')
 
 
-def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, apply_interlace=False,
+def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, a_interlace=1, b_interlace=1,
          print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, u_range=None, l_range=None,
          c_range=None, d_range=None, i=0):
     """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
@@ -100,8 +102,8 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
     if const == 'percolation':
             const = 'percolation, %d' % i
     mitm = enum_params.MITM(target_generator=target_generator, target_name=const, a_poly_size=a_poly_size,
-                            b_poly_size=b_poly_size, num_of_a_polys=[1, 2][apply_interlace],
-                            num_of_b_polys=[1, 2][apply_interlace], postproc_funcs=evaluated_postproc_funcs)
+                            b_poly_size=b_poly_size, num_of_a_polys=a_interlace, num_of_b_polys=b_interlace,
+                            postproc_funcs=evaluated_postproc_funcs)
     print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # a,b polynoms coefficients will be enumerated in [-2,2]
     # one can either set enum_range to set a uniform boundary to all the coefficients,
