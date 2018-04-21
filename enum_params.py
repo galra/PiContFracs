@@ -8,6 +8,44 @@ import csv
 import sys
 import time
 from funcs_sincos import dec_sin
+from functools import wraps
+
+
+def _len_decorator(func):
+    @wraps(func)
+    def wrapper(self, enum_range=None, range_a=None, range_b=None, prec=None):
+        if not (enum_range or range_a or range_b):
+            raise ValueError("No range was given")
+        if isinstance(enum_range, list):
+            if not range_a:
+                # range_a = [enum_range for i in range(self.a_poly_size) ]
+                range_a = [[enum_range] * self._a_poly_size] * self._num_of_a_polys
+            if not range_b:
+                # range_b = [enum_range for i in range(self.b_poly_size) ]
+                range_b = [[enum_range] * self._b_poly_size] * self._num_of_b_polys
+        elif enum_range:
+            if not range_a:
+                range_a = [ [[-enum_range, enum_range+1] for i in range(self._a_poly_size)] ] * self._num_of_a_polys
+            if not range_b:
+                range_b = [ [[-enum_range, enum_range+1] for i in range(self._b_poly_size)] ] * self._num_of_b_polys
+        else:
+            if self._num_of_a_polys == 1:
+                range_a = [range_a]
+            if self._num_of_b_polys == 1:
+                range_b = [range_b]
+
+        a_poly_size = self._a_poly_size
+        b_poly_size = self._b_poly_size
+        gen_len = 1
+        for ar in range_a:
+            ar = ar[0]
+            gen_len *= (ar[1] - ar[0])**a_poly_size
+        for br in range_b:
+            br = br[0]
+            gen_len *= (br[1] - br[0])**b_poly_size
+
+        return (func(self, enum_range, range_a, range_b, prec), gen_len)
+    return wrapper
 
 class BasicEnumPolyParams:
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
@@ -32,6 +70,7 @@ class BasicEnumPolyParams:
     def reinitialize_good_params(self):
         self.good_params = []
 
+    @_len_decorator
     def pis_generator(self, enum_range=None, range_a=None, range_b=None, prec=None):
         """enum_range - a number for the range [-enum_range, enum_range] or a specific range of the format [first, last+1].
 range_a/range_b - should be of the format [first, last+1].
@@ -39,13 +78,17 @@ range_a/range_b - should be of the format [first, last+1].
         if not (enum_range or range_a or range_b):
             raise ValueError("No range was given")
         if isinstance(enum_range, list):
-            # range_a = [enum_range for i in range(self.a_poly_size) ]
-            range_a = [[enum_range] * self._a_poly_size] * self._num_of_a_polys
-            # range_b = [enum_range for i in range(self.b_poly_size) ]
-            range_b = [[enum_range] * self._b_poly_size] * self._num_of_b_polys
+            if not range_a:
+                # range_a = [enum_range for i in range(self.a_poly_size) ]
+                range_a = [[enum_range] * self._a_poly_size] * self._num_of_a_polys
+            if not range_b:
+                # range_b = [enum_range for i in range(self.b_poly_size) ]
+                range_b = [[enum_range] * self._b_poly_size] * self._num_of_b_polys
         elif enum_range:
-            range_a = [ [[-enum_range, enum_range+1] for i in range(self._a_poly_size)] ] * self._num_of_a_polys
-            range_b = [ [[-enum_range, enum_range+1] for i in range(self._b_poly_size)] ] * self._num_of_b_polys
+            if not range_a:
+                range_a = [ [[-enum_range, enum_range+1] for i in range(self._a_poly_size)] ] * self._num_of_a_polys
+            if not range_b:
+                range_b = [ [[-enum_range, enum_range+1] for i in range(self._b_poly_size)] ] * self._num_of_b_polys
         else:
             if self._num_of_a_polys == 1:
                 range_a = [range_a]
@@ -70,7 +113,8 @@ range_a/range_b - should be of the format [first, last+1].
                     pas = (pas[0],)
                 if len(pbs) == 2 and pbs[0] == pbs[1]:
                     pbs = (pbs[0],)
-                if len(pas) == 1 and len(pbs) == 1 and self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
+                if len(pas) == 1 and len(pbs) == 1 and self._enum_only_exp_conv and \
+                   self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
                     continue
                 yield (pi_cont_frac, pas, pbs)
 
@@ -118,6 +162,7 @@ range_a/range_b - should be of the format [first, last+1].
         if show_progress:
             print('')
 
+
 # do we still want to keep the default values here? (some of them require special imports that are not needed otherwise)
 class MITM:
     def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x], trunc_integer=True,
@@ -136,19 +181,31 @@ class MITM:
         self.uniq_params = []
 
     def build_hashtable(self, enum_range=None, range_a=None, range_b=None, prec=None):
-        pg = self.bep.pis_generator(enum_range=enum_range, range_a=range_a, range_b=range_b, prec=prec)
-        self._iter2hashtalbe(pg)
+        pg, pg_len = self.bep.pis_generator(enum_range=enum_range, range_a=range_a, range_b=range_b, prec=prec)
+        self._iter2hashtalbe(pg, pg_len)
 
-    def _iter2hashtalbe(self, itr):
-        for pi_cont_frac, pa, pb in itr:
+    def _iter2hashtalbe(self, itr, itr_len, print_problematic=False):
+        progress_percentage=0
+        print(itr_len)
+        print('0%', end='\n')
+        sys.stdout.flush()
+
+        for i, (pi_cont_frac, pa, pb) in enumerate(itr):
+            if int(100 * i / itr_len) > progress_percentage:
+                progress_percentage = int(100 * i / itr_len)
+                # print('\r%d%%' % progress_percentage, end='')
+                print('%d%%' % progress_percentage, end='\n')
+                sys.stdout.flush()
             cur_cont_frac = pi_cont_frac.get_pi()
             if not cur_cont_frac.is_normal():
                 continue
-            if cur_cont_frac>dec('1E+50') or cur_cont_frac<dec('-1E+50'):#I got trouble when having super large numbers coming going into the sin calc
+            #I got trouble when having super large numbers coming going into the sin calc
+            if print_problematic and (cur_cont_frac>dec('1E+50') or cur_cont_frac<dec('-1E+50')):
                 print('problematic number')
                 print(cur_cont_frac)
                 continue
-            if cur_cont_frac<dec('1E-50') and cur_cont_frac>dec('-1E-50'):  # I got trouble when having super small numbers because we use inverse and then they get large and go into the sin calc
+            # I got trouble when having super small numbers because we use inverse and then they get large and go into the sin calc
+            if print_problematic and (cur_cont_frac<dec('1E-50') and cur_cont_frac>dec('-1E-50')):
                 print('problematic number')
                 print(cur_cont_frac)
                 continue

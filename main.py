@@ -56,10 +56,10 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
          c_range=None, d_range=None, i=0):
     """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
     for percolation, i=0,1 is required"""
-    if not a_coeffs_range:
-        a_coeffs_range = poly_coeffs_range
-    if not b_coeffs_range:
-        b_coeffs_range = poly_coeffs_range
+    # if not a_coeffs_range:
+    #     a_coeffs_range = poly_coeffs_range
+    # if not b_coeffs_range:
+    #     b_coeffs_range = poly_coeffs_range
     if not u_range:
         u_range = ulcd_range
     if not l_range:
@@ -110,7 +110,7 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
     # or set a different range to the a's coefficients and b's coefficients.
     # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
     # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-    mitm.build_hashtable(enum_range=poly_coeffs_range)
+    mitm.build_hashtable(enum_range=poly_coeffs_range, range_a=a_coeffs_range, range_b=b_coeffs_range)
     print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
     # TODO: add n/d instead of 1/d? equivalent to k*pi/l, technically
@@ -153,7 +153,7 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
         print('Canceled refining clicks, 14 digits accuracy, 40000 iterations. Runtime: %s ' %
               (str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
 
-    export_filename = 'results_%s.csv' % time.strftime('%M%H_%d%m%y')
+    export_filename = 'results_%s.csv' % time.strftime('%H%M_%d%m%y')
     mitm.export_to_csv(export_filename, postproc_funcs)
     print('Finished saving results. Filename: %s. Runtime: %s ' %
           (export_filename, str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
