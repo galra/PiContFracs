@@ -34,7 +34,7 @@ class MeasureRuntime():
 # bep.pis_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
 
 # example - this is for interlace
-# main(a_coeffs_range=[[[2, 3]], [[5, 6]]], b_coeffs_range=[[[1, 2]], [[-9, -7]]], a_interlace=2, b_interlace=2)
+# main(a_coeffs_range=[[[2, 3]], [[5, 6]]], b_coeffs_range=[[[1, 2]], [[-9, -7]], [[1,2]]], a_interlace=2, b_interlace=3)
 
 # default is a,b in Z_2[x]
 def safe_inverse(x):
