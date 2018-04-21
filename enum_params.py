@@ -109,9 +109,9 @@ range_a/range_b - should be of the format [first, last+1].
                     pi_cont_frac.gen_iterations(self.num_of_iterations)
                 except cont_fracs.ZeroB:
                     continue
-                if len(pas) == 2 and pas[0] == pas[1]:
+                if len(pas) > 1 and all([ pas[0] == p for p in pas ]):
                     pas = (pas[0],)
-                if len(pbs) == 2 and pbs[0] == pbs[1]:
+                if len(pbs) > 1 and all([ pbs[0] == p for p in pbs ]):
                     pbs = (pbs[0],)
                 if len(pas) == 1 and len(pbs) == 1 and self._enum_only_exp_conv and \
                    self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
