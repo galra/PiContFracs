@@ -8,8 +8,11 @@ from decimal import Decimal as dec
 import time
 import datetime
 from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation
-
 from funcs_sincos import dec_sin
+import dill as pickle  # Makes sure pickle also supports Lambda functions
+import argparse
+from latex import generate_latex
+
 
 class MeasureRuntime():
     def __init__(self):
@@ -51,11 +54,23 @@ def safe_sqrt(x):
         return x**dec('0.5')
 
 
+# Initialize argument parser
+def init_arg_parser():
+    parser = argparse.ArgumentParser(description='PiContFracs')
+    parser.add_argument('--load', help='Loads a MITM object (including hashtable)')
+
+    return parser.parse_args()
+
+
 def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, a_interlace=1, b_interlace=1,
          print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, u_range=None, l_range=None,
          c_range=None, d_range=None, i=0):
     """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
     for percolation, i=0,1 is required"""
+
+    # Argument parser
+    args = init_arg_parser()
+
     # if not a_coeffs_range:
     #     a_coeffs_range = poly_coeffs_range
     # if not b_coeffs_range:
@@ -101,17 +116,29 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
         const = 'feig, %d' % i
     if const == 'percolation':
             const = 'percolation, %d' % i
-    mitm = enum_params.MITM(target_generator=target_generator, target_name=const, a_poly_size=a_poly_size,
+
+    # Either loads the hashtable from previous runs or loads it
+    if args.load:
+        with open(args.load, 'rb') as input_file:
+            mitm = pickle.load(input_file)
+        print('Loaded mitm object and hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    else:
+        mitm = enum_params.MITM(target_generator=target_generator, target_name=const, a_poly_size=a_poly_size,
                             b_poly_size=b_poly_size, num_of_a_polys=a_interlace, num_of_b_polys=b_interlace,
                             postproc_funcs=evaluated_postproc_funcs)
-    print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-    # a,b polynoms coefficients will be enumerated in [-2,2]
-    # one can either set enum_range to set a uniform boundary to all the coefficients,
-    # or set a different range to the a's coefficients and b's coefficients.
-    # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
-    # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-    mitm.build_hashtable(enum_range=poly_coeffs_range, range_a=a_coeffs_range, range_b=b_coeffs_range)
-    print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+        print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+        # a,b polynoms coefficients will be enumerated in [-2,2]
+        # one can either set enum_range to set a uniform boundary to all the coefficients,
+        # or set a different range to the a's coefficients and b's coefficients.
+        # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
+        # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
+        mitm.build_hashtable(enum_range=poly_coeffs_range, range_a=a_coeffs_range, range_b=b_coeffs_range)
+        print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+
+        with open('hash_table.pkl', 'wb') as output_file:
+            pickle.dump(mitm, output_file, protocol=pickle.HIGHEST_PROTOCOL)
+        print('Stored hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+
     # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
     # TODO: add n/d instead of 1/d? equivalent to k*pi/l, technically
     # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
@@ -153,11 +180,18 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
         print('Canceled refining clicks, 14 digits accuracy, 40000 iterations. Runtime: %s ' %
               (str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
 
-    export_filename = 'results_%s.csv' % time.strftime('%H%M_%d%m%y')
+    export_filename = 'results/results_%s.csv' % time.strftime('%H%M_%d%m%y')
     mitm.export_to_csv(export_filename, postproc_funcs)
     print('Finished saving results. Filename: %s. Runtime: %s ' %
           (export_filename, str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     # the above enumeration is of complexity: 2**6 + 4**4, approximately 8 bits. Should be fine.
+
+    # Next generate a PDF of the results (module is not finished)
+    eqns = mitm.get_results_as_eqns()
+    generate_latex(eqns)
+    print('Generated PDF of results. Filename: full.pdf. Runtime: %s ' %
+          (str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+
 
 if __name__ == '__main__':
     main()

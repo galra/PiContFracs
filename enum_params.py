@@ -441,6 +441,23 @@ class MITM:
         del self.dec_hashtable
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
 
+    def get_results_as_eqns(self, uniq_params=False):
+        eqns = []
+
+        for ab,ulcd, post_func_ind, convergence_info in [self.filtered_params, self.uniq_params][uniq_params]:
+            pa, pb = ab
+            u, l, c, d = ulcd
+            pi_cont_frac, postproc_res, modified_pi_expression =self.build_pi_from_params((ab, ulcd, post_func_ind,
+                                                                                           convergence_info))
+
+            # Creates the equation object
+            lhs = r'\frac{{ \frac{{ {0} }}{{\pi}} + \frac{{ \pi }} {{ {1} }} + {2} }} {{ {3} }}'.format(u, l, c, d)
+            rhs = r'XXX'
+            eqn = lhs + r'&=' + rhs + r' \\'
+            eqns.append(eqn)
+
+        return eqns
+
     def export_to_csv(self, filename, postfuncs, uniq_params=False):
         csvfile = open(filename, 'w', newline='')
         csvwriter = csv.writer(csvfile)
