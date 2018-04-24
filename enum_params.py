@@ -9,6 +9,7 @@ import sys
 import time
 from funcs_sincos import dec_sin
 from functools import wraps
+from latex import latex_cont_frac
 
 
 def _len_decorator(func):
@@ -441,19 +442,33 @@ class MITM:
         del self.dec_hashtable
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
 
-    def get_results_as_eqns(self, uniq_params=False):
+    def get_results_as_eqns(self, postfuncs, uniq_params=False):
         eqns = []
 
         for ab,ulcd, post_func_ind, convergence_info in [self.filtered_params, self.uniq_params][uniq_params]:
             pa, pb = ab
             u, l, c, d = ulcd
-            pi_cont_frac, postproc_res, modified_pi_expression =self.build_pi_from_params((ab, ulcd, post_func_ind,
+            pi_cont_frac, postproc_res, modified_pi_expression = self.build_pi_from_params((ab, ulcd, post_func_ind,
                                                                                            convergence_info))
+
+            def eval_poly(poly, x):
+                result = 0.0
+
+                for i in range(len(poly)):
+                    result += poly[i] * x**i
+
+                return int(result)
+
+            depth = 4
+            a = [eval_poly(pa[0], i) for i in range(depth)]
+            b = [eval_poly(pb[0], i) for i in range(depth)]
 
             # Creates the equation object
             lhs = r'\frac{{ \frac{{ {0} }}{{\pi}} + \frac{{ \pi }} {{ {1} }} + {2} }} {{ {3} }}'.format(u, l, c, d)
-            rhs = r'XXX'
-            eqn = lhs + r'&=' + rhs + r' \\'
+            rhs = latex_cont_frac(a, b)
+            eqn = r'\text{{ {0} }} ( {1} ) = {2}'.format(postfuncs[post_func_ind].replace('_', ' '), lhs, rhs)
+
+            # Appends equation
             eqns.append(eqn)
 
         return eqns

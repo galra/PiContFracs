@@ -10,8 +10,8 @@ import datetime
 from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation
 from funcs_sincos import dec_sin
 import dill as pickle  # Makes sure pickle also supports Lambda functions
-import argparse
 from latex import generate_latex
+import configparser
 
 
 class MeasureRuntime():
@@ -54,22 +54,73 @@ def safe_sqrt(x):
         return x**dec('0.5')
 
 
-# Initialize argument parser
-def init_arg_parser():
-    parser = argparse.ArgumentParser(description='PiContFracs')
-    parser.add_argument('--load', help='Loads a MITM object (including hashtable)')
+# Cast a string to its optimal cast (int, float, or still a string)
+def cast_string(s):
+    # Handle None, False or True
+    if s == 'None':
+        return None
+    elif s == 'False':
+        return False
+    elif s == 'True':
+        return True
 
-    return parser.parse_args()
+    # Funnel down through integers, floats and later strings
+    try:
+        return int(s)
+    except ValueError:
+        pass
+
+    try:
+        return float(s)
+    except ValueError:
+        pass
+
+    return s
 
 
-def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, a_interlace=1, b_interlace=1,
-         print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, u_range=None, l_range=None,
-         c_range=None, d_range=None, i=0):
+# Load configuration file
+def load_config(file_name='config.ini'):
+    config = {}
+
+    parsed_config = configparser.ConfigParser()
+    results = parsed_config.read(file_name)
+
+    # If no config file was load
+    if len(results) == 0:
+        return None
+
+    for section in parsed_config.sections():
+        for item in parsed_config[section].items():
+            config[item[0]] = cast_string(item[1])
+
+    return config
+
+# poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, a_interlace=1, b_interlace=1,
+         # print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, u_range=None, l_range=None,
+         # c_range=None, d_range=None, i=0
+def main():
     """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
     for percolation, i=0,1 is required"""
 
-    # Argument parser
-    args = init_arg_parser()
+    # Load configuration file
+    config = load_config('config.ini')
+
+    # Load variables from config (TO DO: need to make this implementation leaner)
+    poly_coeffs_range = config['poly_coeffs_range']
+    ulcd_range = config['ulcd_range']
+    const = config['const']
+    a_poly_size = config['a_poly_size']
+    b_poly_size = config['b_poly_size']
+    a_interlace = config['a_interlace']
+    b_interlace = config['b_interlace']
+    print_surprising_nonexp_contfracs = config['print_surprising_nonexp_contfracs']
+    a_coeffs_range = config['a_coeffs_range']
+    b_coeffs_range = config['b_coeffs_range']
+    u_range = config['u_range']
+    l_range = config['l_range']
+    c_range = config['c_range']
+    d_range = config['d_range']
+    i = config['i']
 
     # if not a_coeffs_range:
     #     a_coeffs_range = poly_coeffs_range
@@ -118,26 +169,26 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
             const = 'percolation, %d' % i
 
     # Either loads the hashtable from previous runs or loads it
-    if args.load:
-        with open(args.load, 'rb') as input_file:
+    if config['hashtable_file'] != 'None':
+        with open(config['hashtable_file'], 'rb') as input_file:
             mitm = pickle.load(input_file)
         print('Loaded mitm object and hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-    else:
-        mitm = enum_params.MITM(target_generator=target_generator, target_name=const, a_poly_size=a_poly_size,
-                            b_poly_size=b_poly_size, num_of_a_polys=a_interlace, num_of_b_polys=b_interlace,
-                            postproc_funcs=evaluated_postproc_funcs)
-        print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-        # a,b polynoms coefficients will be enumerated in [-2,2]
-        # one can either set enum_range to set a uniform boundary to all the coefficients,
-        # or set a different range to the a's coefficients and b's coefficients.
-        # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
-        # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-        mitm.build_hashtable(enum_range=poly_coeffs_range, range_a=a_coeffs_range, range_b=b_coeffs_range)
-        print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    # else:
+    #     mitm = enum_params.MITM(target_generator=target_generator, target_name=const, a_poly_size=a_poly_size,
+    #                         b_poly_size=b_poly_size, num_of_a_polys=a_interlace, num_of_b_polys=b_interlace,
+    #                         postproc_funcs=evaluated_postproc_funcs)
+    #     print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    #     # a,b polynoms coefficients will be enumerated in [-2,2]
+    #     # one can either set enum_range to set a uniform boundary to all the coefficients,
+    #     # or set a different range to the a's coefficients and b's coefficients.
+    #     # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
+    #     # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
+    #     mitm.build_hashtable(enum_range=poly_coeffs_range, range_a=a_coeffs_range, range_b=b_coeffs_range)
+    #     print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
 
-        with open('hash_table.pkl', 'wb') as output_file:
-            pickle.dump(mitm, output_file, protocol=pickle.HIGHEST_PROTOCOL)
-        print('Stored hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    #     with open('hash_table.pkl', 'wb') as output_file:
+    #         pickle.dump(mitm, output_file, protocol=pickle.HIGHEST_PROTOCOL)
+    #     print('Stored hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
 
     # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
     # TODO: add n/d instead of 1/d? equivalent to k*pi/l, technically
@@ -187,9 +238,9 @@ def main(poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_siz
     # the above enumeration is of complexity: 2**6 + 4**4, approximately 8 bits. Should be fine.
 
     # Next generate a PDF of the results (module is not finished)
-    eqns = mitm.get_results_as_eqns()
+    eqns = mitm.get_results_as_eqns(postproc_funcs)
     generate_latex(eqns)
-    print('Generated PDF of results. Filename: full.pdf. Runtime: %s ' %
+    print('Generated PDF of results. Filename: results.pdf. Runtime: %s ' %
           (str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
 
 

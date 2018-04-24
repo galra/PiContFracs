@@ -11,5 +11,5 @@ Simply install everything on the requirements file.
 To get more information about additional arguments that can be passed, type
 
 ```
-python3.6 fire.py --help
+python3.6 main.py --help
 ```
