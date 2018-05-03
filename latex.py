@@ -3,7 +3,7 @@ from pylatex import Document, Section, Math, Alignat
 import os
 
 
-def generate_latex(eqns=[]):
+def generate_latex(filename, eqns=[]):
     doc = Document()
 
     with doc.create(Section('Automatic Conjectures')):
@@ -13,7 +13,7 @@ def generate_latex(eqns=[]):
             with doc.create(Alignat(numbering=False, escape=False)) as agn:
                 agn.append(eqn)
 
-    doc.generate_pdf('results', clean_tex=False)
+    doc.generate_pdf(filename, clean_tex=False)
 
 
 def latex_cont_frac(a, b, current_iteration=''):

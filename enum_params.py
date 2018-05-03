@@ -7,7 +7,6 @@ from gen_real_consts import gen_real_pi
 import csv
 import sys
 import time
-from funcs_sincos import dec_sin
 from functools import wraps
 from latex import latex_cont_frac
 
@@ -105,17 +104,17 @@ range_a/range_b - should be of the format [first, last+1].
                 for pb in pbs:
                     if self._does_have_integer_roots(pb):
                         continue
-                pi_cont_frac.reinitialize(pas, pbs)
-                try:
-                    pi_cont_frac.gen_iterations(self.num_of_iterations)
-                except cont_fracs.ZeroB:
-                    continue
                 if len(pas) > 1 and all([ pas[0] == p for p in pas ]):
                     pas = (pas[0],)
                 if len(pbs) > 1 and all([ pbs[0] == p for p in pbs ]):
                     pbs = (pbs[0],)
                 if len(pas) == 1 and len(pbs) == 1 and self._enum_only_exp_conv and \
                    self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
+                    continue
+                pi_cont_frac.reinitialize(pas, pbs)
+                try:
+                    pi_cont_frac.gen_iterations(self.num_of_iterations)
+                except cont_fracs.ZeroB:
                     continue
                 yield (pi_cont_frac, pas, pbs)
 
@@ -444,20 +443,21 @@ class MITM:
 
     def get_results_as_eqns(self, postfuncs, uniq_params=False):
         eqns = []
+        eval_poly = cont_fracs.PiContFrac._array_to_polynom
 
-        for ab,ulcd, post_func_ind, convergence_info in [self.filtered_params, self.uniq_params][uniq_params]:
+        for ab, ulcd, post_func_ind, convergence_info in [self.filtered_params, self.uniq_params][uniq_params]:
             pa, pb = ab
             u, l, c, d = ulcd
             pi_cont_frac, postproc_res, modified_pi_expression = self.build_pi_from_params((ab, ulcd, post_func_ind,
                                                                                            convergence_info))
 
-            def eval_poly(poly, x):
-                result = 0.0
-
-                for i in range(len(poly)):
-                    result += poly[i] * x**i
-
-                return int(result)
+            # def eval_poly(poly, x):
+            #     result = 0.0
+            #
+            #     for i in range(len(poly)):
+            #         result += poly[i] * x**i
+            #
+            #     return int(result)
 
             depth = 4
             a = [eval_poly(pa[0], i) for i in range(depth)]

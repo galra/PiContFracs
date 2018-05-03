@@ -4,26 +4,44 @@ class DecimalHashTable(dict):
     def __init__(self, accuracy):
         # +1 for the decimal point
         self.accuracy = accuracy + 1
+        self.accuracy_history = []
+
+    def update_accuracy(self, accuracy):
+        self.accuracy_history.append(self.accuracy)
+        self.accuracy = accuracy + 1
 
     def _manipulate_key(self, key):
         if not isinstance(key, dec) and not isinstance(key, str):
             raise TypeError('Only Decimal is supported')
         if isinstance(key, str):
             return key
-        return key.to_eng_string()[:self.accuracy+1]
+        key_str = key.to_eng_string()
+        return [ key_str[:i+1] for i in self.accuracy_history ], key_str[:self.accuracy+1]
 
     def __setitem__(self, key, value):
-        key = self._manipulate_key(key)
-        return super().__setitem__(key, value)
+        old_keys, cur_key = self._manipulate_key(key)
+        for k in old_keys:
+            if super().__contains__(k):
+                super().__delitem__(k)
+        return super().__setitem__(cur_key, value)
 
     def __getitem__(self, item):
-        item = self._manipulate_key(item)
-        return super().__getitem__(item)
+        old_keys, cur_key = self._manipulate_key(item)
+        for k in old_keys:
+            if super().__contains__(k):
+                return super().__getitem__(k)
+        return super().__getitem__(cur_key)
 
     def __delitem__(self, key):
-        key = self._manipulate_key(key)
-        return super().__getitem__(key)
+        old_keys, cur_key = self._manipulate_key(key)
+        for k in old_keys:
+            if super().__contains__(k):
+                return super().__delitem__(k)
+        return super().__getitem__(cur_key)
 
     def __contains__(self, item):
-        item = self._manipulate_key(item)
-        return super().__contains__(item)
+        old_keys, cur_key = self._manipulate_key(item)
+        for k in old_keys:
+            if super().__contains__(k):
+                return True
+        return super().__contains__(cur_key)
