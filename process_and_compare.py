@@ -105,12 +105,12 @@ def load_cont_fracs(csv_path):
 
 
 def build_contfrac_from_params(params):
-    return cont_fracs.PiContFrac(a_coeffs=params['a_params'], b_coeffs=params['b_params'],
-                                 target_val=params['target_formula'](params['target_x']))
+    return cont_fracs.ContFrac(a_coeffs=params['a_params'], b_coeffs=params['b_params'],
+                               target_val=params['target_formula'](params['target_x']))
 
 
 def build_contfrac_errors(contfrac, iters=2000, show_progress=False):
-    """Receives PiContFrac object"""
+    """Receives ContFrac object"""
     errors = []
     contfrac.gen_iterations(0)
     for i in range(iters):
@@ -244,17 +244,17 @@ or ('poly', (approach_parameter, R**2))."""
     delta_pair = []
     delta_odd = []
     contfrac.gen_iterations(initial_cutoff)
-    res_0 = contfrac.get_pi()
+    res_0 = contfrac.get_result()
     contfrac.add_iterations(1)
-    res_1 = contfrac.get_pi()
+    res_1 = contfrac.get_result()
     contfrac.add_iterations(1)
-    res_2 = contfrac.get_pi()
+    res_2 = contfrac.get_result()
     contfrac.add_iterations(1)
-    res_3 = contfrac.get_pi()
+    res_3 = contfrac.get_result()
     contfrac.add_iterations(1)
-    res_4 = contfrac.get_pi()
+    res_4 = contfrac.get_result()
     contfrac.add_iterations(1)
-    res_5 = contfrac.get_pi()
+    res_5 = contfrac.get_result()
     delta_pair.append((initial_cutoff, abs(res_2 - res_0)))
     delta_pair.append((initial_cutoff + 2, abs(res_4 - res_2)))
     delta_odd.append((initial_cutoff + 1, abs(res_3 - res_1)))
@@ -263,17 +263,17 @@ or ('poly', (approach_parameter, R**2))."""
     for i in range(initial_cutoff+iters_step, iters+1, iters_step):
         # -3 for the iterations of res_1, res_2, res_3 that were already executed
         contfrac.add_iterations(iters_step - 5)
-        res_0 = contfrac.get_pi()
+        res_0 = contfrac.get_result()
         contfrac.add_iterations(1)
-        res_1 = contfrac.get_pi()
+        res_1 = contfrac.get_result()
         contfrac.add_iterations(1)
-        res_2 = contfrac.get_pi()
+        res_2 = contfrac.get_result()
         contfrac.add_iterations(1)
-        res_3 = contfrac.get_pi()
+        res_3 = contfrac.get_result()
         contfrac.add_iterations(1)
-        res_4 = contfrac.get_pi()
+        res_4 = contfrac.get_result()
         contfrac.add_iterations(1)
-        res_5 = contfrac.get_pi()
+        res_5 = contfrac.get_result()
         delta_pair.append((i, abs(res_2 - res_0)))
         delta_pair.append((i + 2, abs(res_4 - res_2)))
         delta_odd.append((i + 1, abs(res_3 - res_1)))

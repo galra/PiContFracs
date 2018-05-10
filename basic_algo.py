@@ -9,7 +9,7 @@ def set_precision(prec):
     decimal.getcontext().prec=prec
 
 
-class RNNAlgo:
+class BasicRecursiveConstRepresenter:
     class SufficientAccuracy(Exception):
         pass
 
@@ -84,7 +84,7 @@ class RNNAlgo:
             raise RuntimeError('Run gen_iterations first. No PI was generated!')
 
 
-class PiBasicAlgo(RNNAlgo):
+class PiBasicAlgo(BasicRecursiveConstRepresenter):
     def __init__(self, params, diff_mat_gen=None, first_diff_mat=None, target_val=None, logging=False, dtype=dec):
         if target_val is None:
             target_val = gen_real_pi()
@@ -106,8 +106,8 @@ class PiBasicAlgo(RNNAlgo):
         super().add_iterations(num_of_iters, iteration_algorithm=iteration_algorithm,
                                exec_finalize=exec_finalize)
 
-    def compare_result(self, real_pi=None, abs=True):
-        return super().compare_result('pi', real_pi)
+    def compare_result(self, target_val=None, abs=True):
+        return super().compare_result('contfrac_res', target_val)
 
     def iteration_algorithm(self, params, diff_mat, i):
         raise NotImplementedError()

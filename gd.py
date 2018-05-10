@@ -1,5 +1,5 @@
 import basic_algo
-from cont_fracs import PiContFrac
+from cont_fracs import ContFrac
 from decimal import Decimal as dec
 import numpy as np
 import random
@@ -44,7 +44,7 @@ class GradientDescentBasicAlgo:
             a_coeffs_param = a_coeffs
             b_coeffs_param = b_coeffs
 
-        pcf = PiContFrac(a_coeffs_param, b_coeffs_param)
+        pcf = ContFrac(a_coeffs_param, b_coeffs_param)
         pcf.gen_iterations(ITERATIONS_CHUNCK_SIZE)
         iter_num = 1
         dec_0 = dec(0)

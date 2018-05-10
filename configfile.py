@@ -3,23 +3,6 @@ import json
 import re
 import os
 
-CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
-                       'ulcd_range': json.loads,
-                       'const': ConfigParser._string_parameter_parser,
-                       'a_poly_size': int,
-                       'b_poly_size': int,
-                       'a_interlace': int,
-                       'b_interlace': int,
-                       'print_surprising_nonexp_contfracs': ConfigParser._string_parameter_parser,
-                       'a_coeffs_range': json.loads,
-                       'b_coeffs_range': json.loads,
-                       'u_range': json.loads,
-                       'l_range': json.loads,
-                       'c_range': json.loads,
-                       'd_range': json.loads
-                       'i': int,
-                       'generate_hashtable': ConfigParser._string_parameter_parser,
-                       'hashtable_file': ConfigParser._string_parameter_parser}
 
 class ConfigParser(configparser.ConfigParser):
     def __init__(self, configfile=None, *args, **kwargs):
@@ -29,7 +12,7 @@ class ConfigParser(configparser.ConfigParser):
             self._load_config(configfile)
 
     @staticmethod
-    def _string_parameter_parser(s):
+    def string_parameter_parser(s):
         """returns a stripped string, converts None, True and False to the appropriate object"""
         s = s.strip()
         if s.lower() == 'none':
@@ -43,7 +26,7 @@ class ConfigParser(configparser.ConfigParser):
 
     # Cast a string to its optimal cast (int, float, list or still a string)
     def _cast_unknown_param_val(self, s):
-        s = string_parameter_parser(s)
+        s = self.string_parameter_parser(s)
         if not isinstance(s, str):
             return s
 
@@ -67,28 +50,44 @@ class ConfigParser(configparser.ConfigParser):
 
     def _cast_param_val(self, param_key, param_val):
         if param_key in CONFIG_PARAMS_TYPES:
-            return CONFIG_PARAMS_TYPES[param_key](param_val)
+            try:
+                if param_val.lower().strip() == 'none':
+                    return None
+                return CONFIG_PARAMS_TYPES[param_key](param_val)
+            except json.JSONDecodeError:
+                print('Error in _cast_param_val, configfile.py')
+                print(param_key)
+                print(param_val)
+                exit()
+
+
         return self._cast_unknown_param_val(param_val)
 
     # generates a config filename with a new version
     def _gen_hashtable_filename(self):
-        is_new_filename_required = self.config['generate_hashtable']
+        hashtable_file_operation = self.config['hashtable_file_operation']
         filename = self.config['hashtable_file']
         if not filename:
             return
 
         if not re.match('(.*?)(_v[0-9.]+)?(\\.pkl)', filename):
-            filename = '%s_v1.pkl' % filename.[:-len('.pkl')]
+            filename = '%s_v1.pkl' % filename[:-len('.pkl')]
 
         old_versions = [ fn for fn in os.listdir() if re.match('(.*?)(_v[0-9.]+)?(\\.pkl)', fn) ]
         old_versions.sort()
         if not old_versions:
             self.config['hashtable_file'] = filename
             return
-        filename_base, v, _ = re.findall('(.*?)(_v[0-9.]+)?(\\.pkl)', fn)
-        v = v.replace('_v', '')
-        v = int(v) + 1
-        filename = '%s_v%d.pkl' % (filename_base, v)
+        if hashtable_file_operation == 'generate':
+            filename_base, v, _ = re.findall('(.*?)(_v[0-9.]+)?(\\.pkl)', old_versions[-1])[0]
+            v = v.replace('_v', '')
+            if not v:
+                v = 0
+            v = int(v) + 1
+            print(v)
+            filename = '%s_v%d.pkl' % (filename_base, v)
+        else:
+            filename = old_versions[-1]
         self.config['hashtable_file'] = filename
 
     # Load a configuration file
@@ -107,5 +106,29 @@ class ConfigParser(configparser.ConfigParser):
                 self.config[item_key] = self._cast_param_val(item_key, item_val)
         self._gen_hashtable_filename()
 
+        if self.config['hashtable_file_operation'] not in ['generate', 'expand', 'use']:
+            raise ValueError('Illegal value for hashtable_file_operation')
+
     def get_config(self):
         return self.config
+
+
+
+CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
+                       'ulcd_range': json.loads,
+                       'const': ConfigParser.string_parameter_parser,
+                       'a_poly_size': int,
+                       'b_poly_size': int,
+                       'a_interlace': int,
+                       'b_interlace': int,
+                       'print_surprising_nonexp_contfracs': ConfigParser.string_parameter_parser,
+                       # json is used to support interlace lists
+                       'a_coeffs_range': json.loads,
+                       'b_coeffs_range': json.loads,
+                       'u_range': json.loads,
+                       'l_range': json.loads,
+                       'c_range': json.loads,
+                       'd_range': json.loads,
+                       'i': int,
+                       'hashtable_file_operation': ConfigParser.string_parameter_parser,
+                       'hashtable_file': ConfigParser.string_parameter_parser}

@@ -14,48 +14,31 @@ from latex import latex_cont_frac
 def _len_decorator(func):
     @wraps(func)
     def wrapper(self, enum_range=None, range_a=None, range_b=None, prec=None):
-        if not (enum_range or range_a or range_b):
-            raise ValueError("No range was given")
-        if isinstance(enum_range, list):
-            if not range_a:
-                # range_a = [enum_range for i in range(self.a_poly_size) ]
-                range_a = [[enum_range] * self._a_poly_size] * self._num_of_a_polys
-            if not range_b:
-                # range_b = [enum_range for i in range(self.b_poly_size) ]
-                range_b = [[enum_range] * self._b_poly_size] * self._num_of_b_polys
-        elif enum_range:
-            if not range_a:
-                range_a = [ [[-enum_range, enum_range+1] for i in range(self._a_poly_size)] ] * self._num_of_a_polys
-            if not range_b:
-                range_b = [ [[-enum_range, enum_range+1] for i in range(self._b_poly_size)] ] * self._num_of_b_polys
-        else:
-            if self._num_of_a_polys == 1:
-                range_a = [range_a]
-            if self._num_of_b_polys == 1:
-                range_b = [range_b]
-
-        a_poly_size = self._a_poly_size
-        b_poly_size = self._b_poly_size
+        range_a, range_b = self._convert_ranges_to_range_a_range_b(enum_range, range_a, range_b)
         gen_len = 1
         for ar in range_a:
-            ar = ar[0]
-            gen_len *= (ar[1] - ar[0])**a_poly_size
+            for r in ar:
+                gen_len *= (r[1] - r[0])
         for br in range_b:
-            br = br[0]
-            gen_len *= (br[1] - br[0])**b_poly_size
+            for r in br:
+                gen_len *= (r[1] - r[0])
 
         return (func(self, enum_range, range_a, range_b, prec), gen_len)
     return wrapper
 
 class BasicEnumPolyParams:
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
-                 enum_only_exp_conv = False, threshold=None, prec=100):
+                 enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
+                 threshold=None, prec=100):
         self._a_poly_size = a_poly_size
         self._b_poly_size = b_poly_size
         self._num_of_a_polys = num_of_a_polys
         self._num_of_b_polys = num_of_b_polys
         self.num_of_iterations = num_of_iterations
         self._enum_only_exp_conv = enum_only_exp_conv
+        self._avoid_int_roots = avoid_int_roots
+        self._should_gen_contfrac = should_gen_contfrac
+        self._avoid_zero_b = avoid_zero_b
         self.good_params = []
         if threshold is None:
             self.threshold = dec(10)**dec(-4)
@@ -70,11 +53,7 @@ class BasicEnumPolyParams:
     def reinitialize_good_params(self):
         self.good_params = []
 
-    @_len_decorator
-    def pis_generator(self, enum_range=None, range_a=None, range_b=None, prec=None):
-        """enum_range - a number for the range [-enum_range, enum_range] or a specific range of the format [first, last+1].
-range_a/range_b - should be of the format [first, last+1].
-    if two switching polynomials are used, this should be [[first1, last1+1], [first2, last2+1]]"""
+    def _convert_ranges_to_range_a_range_b(self, enum_range, range_a, range_b):
         if not (enum_range or range_a or range_b):
             raise ValueError("No range was given")
         if isinstance(enum_range, list):
@@ -89,20 +68,29 @@ range_a/range_b - should be of the format [first, last+1].
                 range_a = [ [[-enum_range, enum_range+1] for i in range(self._a_poly_size)] ] * self._num_of_a_polys
             if not range_b:
                 range_b = [ [[-enum_range, enum_range+1] for i in range(self._b_poly_size)] ] * self._num_of_b_polys
-        else:
-            if self._num_of_a_polys == 1:
-                range_a = [range_a]
-            if self._num_of_b_polys == 1:
-                range_b = [range_b]
 
-        self.time_measure = 0
-        pi_cont_frac = cont_fracs.PiContFrac([0 for i in range_a], [0 for i in range_b])
+        return range_a, range_b
+
+    @_len_decorator
+    def polys_generator(self, enum_range=None, range_a=None, range_b=None, prec=None):
+        """enum_range - a number for the range [-enum_range, enum_range] or a specific range of the format [first, last+1].
+range_a/range_b - should be of the format [first, last+1].
+    if two switching polynomials are used, this should be [[first1, last1+1], [first2, last2+1]]"""
+        range_a, range_b = self._convert_ranges_to_range_a_range_b(enum_range, range_a, range_b)
+        # else:
+        #     if self._num_of_a_polys == 1:
+        #         range_a = [range_a]
+        #     if self._num_of_b_polys == 1:
+        #         range_b = [range_b]
+
+        # self.time_measure = 0
+        cont_frac = cont_fracs.ContFrac([0 for i in range_a], [0 for i in range_b])
         a_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in ra ]) for ra in range_a ])
         for pas in a_params_iterator:
             b_params_iterator = itertools.product(*[itertools.product(*[ range(*r) for r in rb ]) for rb in range_b ])
             for pbs in b_params_iterator:
                 for pb in pbs:
-                    if self._does_have_integer_roots(pb):
+                    if self._avoid_int_roots and self._does_have_integer_roots(pb):
                         continue
                 if len(pas) > 1 and all([ pas[0] == p for p in pas ]):
                     pas = (pas[0],)
@@ -111,12 +99,16 @@ range_a/range_b - should be of the format [first, last+1].
                 if len(pas) == 1 and len(pbs) == 1 and self._enum_only_exp_conv and \
                    self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
                     continue
-                pi_cont_frac.reinitialize(pas, pbs)
-                try:
-                    pi_cont_frac.gen_iterations(self.num_of_iterations)
-                except cont_fracs.ZeroB:
-                    continue
-                yield (pi_cont_frac, pas, pbs)
+                if self._should_gen_contfrac
+                    cont_frac.reinitialize(pas, pbs)
+                    if self._avoid_zero_b
+                        try:
+                            cont_frac.gen_iterations(self.num_of_iterations)
+                        except cont_fracs.ZeroB:
+                            continue
+                    yield (cont_frac, pas, pbs)
+                else:
+                    yield(pas, pbs)
 
     def _does_have_integer_roots(self, poly):
         mask = [ i for i,e in enumerate(poly) if e != 0 ]
@@ -150,14 +142,13 @@ range_a/range_b - should be of the format [first, last+1].
         return deg
 
     def enum_params(self, enum_range=None, range_a=None, range_b=None, show_progress=True):
-        params_iter = self.pis_generator(enum_range, range_a, range_b)
+        params_iter = self.polys_generator(enum_range, range_a, range_b)
         iter_num = 1
-        for pi_cont_frac, pa, pb in params_iter:
-            if pi_cont_frac.is_pi_valid() and pi_cont_frac.compare_result() < self.threshold:
+        for cont_frac, pa, pb in params_iter:
+            if cont_frac.is_result_valid() and cont_frac.compare_result() < self.threshold:
                     self.good_params.append({'a': pa, 'b': pb})
             if iter_num % 100 == 0 and show_progress:
-                #print('\r%d' % (iter_num), end='')
-                print('%d' % (iter_num), end='\n')
+                print('\r%d' % (iter_num), end='')
             iter_num += 1
         if show_progress:
             print('')
@@ -170,33 +161,46 @@ class MITM:
                  enum_only_exp_conv=True, num_of_iterations=100, threshold=None, prec=50):
         self.bep = BasicEnumPolyParams(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                                        num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
+                                       avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                                        num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
         self.target_generator = target_generator
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
         self.trunc_integer = trunc_integer
         self.hashtable_prec = hashtable_prec
+        self.prec = prec
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
         self.filtered_params = []
         self.uniq_params = []
 
+    def redefine_settings(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
+                          trunc_integer=True, hashtable_prec = 6, prec=50):
+        self.target_generator = target_generator
+        self.target_name = target_name
+        self.postproc_funcs = postproc_funcs
+        self.trunc_integer = trunc_integer
+        self.hashtable_prec = hashtable_prec
+        self.dec_hashtable.update_accuracy(self.hashtable_prec)
+        self.filtered_params = []
+        self.uniq_params = []
+        set_precision(prec)
+
     def build_hashtable(self, enum_range=None, range_a=None, range_b=None, prec=None):
-        pg, pg_len = self.bep.pis_generator(enum_range=enum_range, range_a=range_a, range_b=range_b, prec=prec)
+        pg, pg_len = self.bep.polys_generator(enum_range=enum_range, range_a=range_a, range_b=range_b, prec=prec)
         self._iter2hashtalbe(pg, pg_len)
 
     def _iter2hashtalbe(self, itr, itr_len, print_problematic=False):
         progress_percentage=0
-        print(itr_len)
-        print('0%', end='\n')
+        # print(itr_len)
+        print('0%', end='')
         sys.stdout.flush()
 
-        for i, (pi_cont_frac, pa, pb) in enumerate(itr):
+        for i, (cont_frac, pa, pb) in enumerate(itr):
             if int(100 * i / itr_len) > progress_percentage:
                 progress_percentage = int(100 * i / itr_len)
-                # print('\r%d%%' % progress_percentage, end='')
-                print('%d%%' % progress_percentage, end='\n')
+                print('\r%d%%' % progress_percentage, end='')
                 sys.stdout.flush()
-            cur_cont_frac = pi_cont_frac.get_pi()
+            cur_cont_frac = cont_frac.get_result()
             if not cur_cont_frac.is_normal():
                 continue
             #I got trouble when having super large numbers coming going into the sin calc
@@ -224,56 +228,62 @@ class MITM:
                 if k not in self.dec_hashtable:
                     self.dec_hashtable[k] = []
                 self.dec_hashtable[k].append(((pa, pb), post_func_ind))
+        print()
 
-    def find_clicks(self, u_range, l_range, c_range, d_range):
-        if isinstance(u_range, int):
-            u_range = range(-u_range, u_range+1)
-        if isinstance(l_range, int):
-            l_range = range(-l_range, l_range+1)
-        if isinstance(c_range, int):
-            c_range = range(-c_range, c_range+1)
-        if isinstance(d_range, int):
-            d_range = range(1, d_range+1)
+    def find_clicks(self, lhs_rational_numerator, lhs_rational_denominator):
+        # if isinstance(u_range, int):
+        #     u_range = range(-u_range, u_range+1)
+        # if isinstance(l_range, int):
+        #     l_range = range(-l_range, l_range+1)
+        # if isinstance(c_range, int):
+        #     c_range = range(-c_range, c_range+1)
+        # if isinstance(d_range, int):
+        #     d_range = range(1, d_range+1)
+
+        lhs_rational_generator = BasicEnumPolyParams(avoid_int_roots=False, avoid_zero_b=False,
+                                                     should_gen_contfrac=False, prec=self.prec)
+        lhs_rational_generator, lhs_iter_len = lhs_rational_generator.polys_generator(range_a=[lhs_rational_numerator],
+                                                                                      range_b=[lhs_rational_denominator])
         target_value = self.target_generator()
         filtered_params = []
 
 
-        ulcd_iter_len = len(u_range) * len(l_range) * len(c_range) * len(d_range)
         progress_percentage=0
         print('0%', end='')
-        for i, (u, l, c, d) in enumerate(itertools.product(u_range, l_range, c_range, d_range)):
-            if d == 0 or l == 0:
+        for i, (p_numerator, p_denominator) in enumerate(lhs_rational_generator):
+            p_numerator = p_numerator[0]
+            p_denominator = p_denominator[0]
+            numerator = cont_fracs.ContFrac._array_to_polynom(p_numerator, target_value)
+            denominator = cont_fracs.ContFrac._array_to_polynom(p_denominator, target_value)
+            if not denominator.is_normal() or not numerator.is_normal():
                 continue
-            elif abs(c) >= abs(d):
-                continue
-            else:
-                r = abs((u/target_value + target_value/l + c) / d)
-                if self.trunc_integer:
-                    r -= int(r)
-                if r in self.dec_hashtable:
-                    filtered_params.extend([ (ab, (u, l, c, d), post_func_ind, None)
-                                             for ab, post_func_ind in self.dec_hashtable[r] ])
-            if int(100 * i / ulcd_iter_len) > progress_percentage:
-                progress_percentage = int(100 * i / ulcd_iter_len)
-                # print('\r%d%%' % progress_percentage, end='')
-                print('%d%%' % progress_percentage, end='\n')
-        print('\r', end='')
+            r = abs(numerator / denominator)
+
+            if self.trunc_integer:
+                r -= int(r)
+            if r in self.dec_hashtable or -r in self.dec_hashtable:
+                filtered_params.extend([ (ab, (p_numerator, p_denominator), post_func_ind, None)
+                                         for ab, post_func_ind in self.dec_hashtable[r] ])
+            if int(100 * i / lhs_iter_len) > progress_percentage:
+                progress_percentage = int(100 * i / lhs_iter_len)
+                print('\r%d%%' % progress_percentage, end='')
+            print('')
         self.filtered_params = filtered_params
 
     def refine_clicks(self, accuracy=10, num_of_iterations=3000, print_clicks=False):
         refined_params = []
         target_value = self.target_generator()
-        # pi_cont_frac = cont_fracs.PiContFrac()
+        # cont_frac = cont_fracs.ContFrac()
         progress_percentage = 0
         filtered_params_len = len(self.filtered_params)
         print('0%\r', end='')
         for i, (ab, ulcd, post_func_ind, convergence_info) in enumerate(self.filtered_params):
-            pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
-            pi_cont_frac.set_approach_type_and_params(convergence_info)
-            # pi_cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
-            pi_cont_frac.gen_iterations(num_of_iterations, dec('1E-%d' % (accuracy+100)))
+            cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
+            cont_frac.set_approach_type_and_params(convergence_info)
+            # cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
+            cont_frac.gen_iterations(num_of_iterations, dec('1E-%d' % (accuracy+100)))
             u, l, c, d = ulcd
-            signed_rhs = self.postproc_funcs[post_func_ind](pi_cont_frac.get_pi())
+            signed_rhs = self.postproc_funcs[post_func_ind](cont_frac.get_result())
             rhs = abs(signed_rhs)
             if not rhs.is_normal():
                 continue
@@ -300,8 +310,8 @@ class MITM:
                 refined_params.append((ab, ulcd, post_func_ind, convergence_info))
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
-                #print('%d%%\r' % progress_percentage, end='')
-                print('%d%%' % progress_percentage, end='\n')
+                print('\r%d%%' % progress_percentage, end='')
+        print('')
         self.filtered_params = refined_params
 
     def get_uniq_filtered_params(self):
@@ -373,21 +383,18 @@ class MITM:
         filtered_params_list = []
         for i, cf_params in enumerate(params_list):
             ab, ulcd, post_func_ind, convergence_info = cf_params
-            pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
-            if pi_cont_frac.is_convergence_exponential():
+            cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
+            if cont_frac.is_convergence_exponential():
                 filtered_params_list.append(cf_params)
             elif print_surprising_nonexp_contfracs:
                 print('Surprising non-exponential convergence continuous fraction:')
                 print(cf_params)
-                pi_cont_frac.estimate_approach_type_and_params()
-                print(pi_cont_frac.get_approach_type_and_params())
+                cont_frac.estimate_approach_type_and_params()
+                print(cont_frac.get_approach_type_and_params())
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
-                #print('%d%%\r' % progress_percentage, end='')
-                print('%d%%' % progress_percentage, end='\n')
-        # if filter_uniq_list:
-        #     self.uniq_params = params_list
-        # else:
+                print('\r%d%%' % progress_percentage, end='')
+        print('')
         self.filtered_params = filtered_params_list
 
     def filter_clicks_by_approach_type(self, whitelist=['exp', 'over_exp', 'fast'], blacklist=None):    # , filter_uniq_list=True):
@@ -407,10 +414,10 @@ class MITM:
         filtered_params_list = []
         for i, cf_params in enumerate(params_list):
             ab, ulcd, post_func_ind, convergence_info = cf_params
-            pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
+            cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             try:
-                pi_cont_frac.estimate_approach_type_and_params()
-                approach_type, approach_params = pi_cont_frac.get_approach_type_and_params()
+                cont_frac.estimate_approach_type_and_params()
+                approach_type, approach_params = cont_frac.get_approach_type_and_params()
             except Exception as e:
                 print('Problems while estimating the following cf_params in "filter_clicks_by_approach_type"')
                 print('Exception has occurred. Skipping.')
@@ -422,9 +429,8 @@ class MITM:
                 filtered_params_list.append(cf_params)
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
-                #print('%d%%\r' % progress_percentage, end='')
-                print('%d%%' % progress_percentage, end='\n')
-
+                print('\r%d%%' % progress_percentage, end='')
+        print('')
         # if filter_uniq_list:
         #     self.uniq_params = params_list
         # else:
@@ -443,13 +449,15 @@ class MITM:
 
     def get_results_as_eqns(self, postfuncs, uniq_params=False):
         eqns = []
-        eval_poly = cont_fracs.PiContFrac._array_to_polynom
+        eval_poly = cont_fracs.ContFrac._array_to_polynom
+        known_targets = {'pi': '\pi'
+                        'phi' '\varphi'}
 
         for ab, ulcd, post_func_ind, convergence_info in [self.filtered_params, self.uniq_params][uniq_params]:
             pa, pb = ab
             u, l, c, d = ulcd
-            pi_cont_frac, postproc_res, modified_pi_expression = self.build_pi_from_params((ab, ulcd, post_func_ind,
-                                                                                           convergence_info))
+            cont_frac, postproc_res, modified_target_expression = self.build_contfrac_from_params((ab, ulcd, post_func_ind,
+                                                                                                   convergence_info))
 
             # def eval_poly(poly, x):
             #     result = 0.0
@@ -463,8 +471,14 @@ class MITM:
             a = [eval_poly(pa[0], i) for i in range(depth)]
             b = [eval_poly(pb[0], i) for i in range(depth)]
 
+            if self.target_name in known_targets:
+                target_name = known_targets[self.target_name]
+            else:
+                target_name = self.target_name
+
             # Creates the equation object
-            lhs = r'\frac{{ \frac{{ {0} }}{{\pi}} + \frac{{ \pi }} {{ {1} }} + {2} }} {{ {3} }}'.format(u, l, c, d)
+            lhs = r'\frac{{ \frac{{ {1} }}{{{0}}} + \frac{{ {0} }} {{ {2} }} + {3} }} {{ {4} }}'.format(target_name, u,
+                                                                                                        l, c, d)
             rhs = latex_cont_frac(a, b)
             eqn = r'\text{{ {0} }} ( {1} ) = {2}'.format(postfuncs[post_func_ind].replace('_', ' '), lhs, rhs)
 
@@ -479,25 +493,26 @@ class MITM:
         csvwriter.writerow(['postproc_funcs', postfuncs, 'target_name', self.target_name])
         csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'procpost_func index',
                             'u', 'l', 'c', 'd',
-                            'convergence type', 'convergence rate', 'postfunc(cont_frac)', '(u/pi+pi/l+c)/d'])
+                            'convergence type', 'convergence rate', 'postfunc(cont_frac)',
+                            '(u/{0}+{0}/l+c)/d'.format(self.target_name)])
         for ab,ulcd, post_func_ind, convergence_info in [self.filtered_params, self.uniq_params][uniq_params]:
             pa, pb = ab
             u, l, c, d = ulcd
-            pi_cont_frac, postproc_res, modified_pi_expression =self.build_pi_from_params((ab, ulcd, post_func_ind,
-                                                                                           convergence_info))
+            cont_frac, postproc_res, modified_target_expression =self.build_contfrac_from_params((ab, ulcd, post_func_ind,
+                                                                                                 convergence_info))
             csvwriter.writerow([pa, pb, post_func_ind, u, l, c, d, convergence_info[0], convergence_info[1],
-                                postproc_res.to_eng_string(), modified_pi_expression.to_eng_string()])
+                                postproc_res.to_eng_string(), modified_target_expression.to_eng_string()])
         csvfile.close()
 
-    def build_pi_from_params(self, params, iterations=3000):
+    def build_contfrac_from_params(self, params, iterations=3000):
         target_value = self.target_generator()
         ab, ulcd, post_func_ind, convergence_info = params
         u,l,c,d = ulcd
         pa, pb = ab
-        pi_cont_frac = cont_fracs.PiContFrac(a_coeffs=pa, b_coeffs=pb)
-        pi_cont_frac.gen_iterations(iterations)
-        modified_pi_expression = (u/target_value + target_value/l + c) / d
-        return (pi_cont_frac, self.postproc_funcs[post_func_ind](pi_cont_frac.get_pi()), modified_pi_expression)
+        cont_frac = cont_fracs.ContFrac(a_coeffs=pa, b_coeffs=pb)
+        cont_frac.gen_iterations(iterations)
+        modified_target_expression = (u/target_value + target_value/l + c) / d
+        return (cont_frac, self.postproc_funcs[post_func_ind](cont_frac.get_result()), modified_target_expression)
 
     @staticmethod
     def compare_dec_with_accuracy(d1, d2, accuracy):

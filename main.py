@@ -15,6 +15,8 @@ import os
 from configfile import ConfigParser
 import configfile
 
+LEGAL_CONFIG_PARAMS = configfile.CONFIG_PARAMS_TYPES
+
 class MeasureRuntime():
     def __init__(self):
         self.times = []
@@ -26,16 +28,20 @@ class MeasureRuntime():
         self.times.append(time.time())
         return self.times[-1] - self.times[-2]
 
+
+class Parameters:
+    pass
+
 # example - this is the standard continuous fraction with sixes. it works.
 # mitm = enum_params.MITM(postproc_func=lambda x:x)
-# mitm.build_hashtable(range_a = [[6,7], [0,1], [0,1]], range_b=[[1,2],[-4,-3],[4,5]])
-# mitm.find_clicks(u_range=[0], l_range=[1], c_range=range(-4,4), d_range=[1])
+# mitm.build_hashtable(range_a = [[[6,7], [0,1], [0,1]]], range_b=[[[1,2],[-4,-3],[4,5]]])
+# mitm.find_clicks(params.u_range=[0], params.l_range=[1], params.c_range=range(-4,4), params.d_range=[1])
 # mitm.refine_clicks()
 # print(mitm.filtered_params)
 
 # example - this is for testing a specific set of parameters
 # bep = enum_params.BasicEnumPolyParams()
-# bep.pis_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
+# bep.polys_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
 
 # example - this is for interlace
 # main(a_coeffs_range=[[[2, 3]], [[5, 6]]], b_coeffs_range=[[[1, 2]], [[-9, -7]], [[1,2]]], a_interlace=2, b_interlace=3)
@@ -53,21 +59,24 @@ def safe_sqrt(x):
     else:
         return x**dec('0.5')
 
-# poly_coeffs_range=3, ulcd_range=3, const='e', a_poly_size=3, b_poly_size=3, a_interlace=1, b_interlace=1,
-         # print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, u_range=None, l_range=None,
-         # c_range=None, d_range=None, i=0
+# poly_coeffs_range=3, ulcd_params=3, const='e', a_poly_size=3, b_poly_size=3, a_interlace=1, b_interlace=1,
+         # print_surprising_nonexp_contfracs=False, a_coeffs_range=None, b_coeffs_range=None, params.u_range=None, params.l_range=None,
+         # params.c_range=None, params.d_range=None, i=0
 def main(configfile='config.ini'):
     """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
     for percolation, i=0,1 is required"""
 
     # Load configuration file
+    params = Parameters()
     config_parser = ConfigParser(configfile=configfile)
     config = config_parser.get_config()
     # Load variables from config
-    for config_variable in configfile.CONFIG_PARAMS_TYPES:
-        globals()[config_variable] = config[config_variable]
+    for config_variable in LEGAL_CONFIG_PARAMS:
+        # print('Setting up %s' % config_variable)
+        setattr(params, config_variable, config[config_variable])
+        print('%s is set up to %s ' % (config_variable, getattr(params, config_variable)))
     # poly_coeffs_range = config['poly_coeffs_range']
-    # ulcd_range = config['ulcd_range']
+    # ulcd_params = config['ulcd_params']
     # const = config['const']
     # a_poly_size = config['a_poly_size']
     # b_poly_size = config['b_poly_size']
@@ -76,24 +85,24 @@ def main(configfile='config.ini'):
     # print_surprising_nonexp_contfracs = config['print_surprising_nonexp_contfracs']
     # a_coeffs_range = config['a_coeffs_range']
     # b_coeffs_range = config['b_coeffs_range']
-    # u_range = config['u_range']
-    # l_range = config['l_range']
-    # c_range = config['c_range']
-    # d_range = config['d_range']
+    # params.u_range = config['params.u_range']
+    # params.l_range = config['params.l_range']
+    # params.c_range = config['params.c_range']
+    # params.d_range = config['params.d_range']
     # i = config['i']
 
     # if not a_coeffs_range:
     #     a_coeffs_range = poly_coeffs_range
     # if not b_coeffs_range:
     #     b_coeffs_range = poly_coeffs_range
-    if not u_range:
-        u_range = ulcd_range
-    if not l_range:
-        l_range = ulcd_range
-    if not c_range:
-        c_range = ulcd_range
-    if not d_range:
-        d_range = ulcd_range
+    if not params.u_range:
+        params.u_range = params.ulcd_range
+    if not params.l_range:
+        params.l_range = params.ulcd_range
+    if not params.c_range:
+        params.c_range = params.ulcd_range
+    if not params.d_range:
+        params.d_range = params.ulcd_range
 
     gen_real_feig_const = lambda: gen_real_feig(i)
     gen_real_percolation_const = lambda: gen_real_percolation(i)
@@ -103,8 +112,8 @@ def main(configfile='config.ini'):
                          'feig': gen_real_feig_const,
                          'euler_masch': gen_real_euler_masch,
                          'percolation': gen_real_percolation_const}
-    if const in consts_generators:
-        target_generator = consts_generators[const]
+    if params.const in consts_generators:
+        target_generator = consts_generators[params.const]
     else:
         raise ValueError('Invalid const.')
     
@@ -123,46 +132,53 @@ def main(configfile='config.ini'):
     evaluated_postproc_funcs = [ eval(ppf) for ppf in postproc_funcs ]
     measure_runtime = MeasureRuntime()
     measure_runtime.start_measure()
-    if const == 'feig':
-        const = 'feig, %d' % i
-    if const == 'percolation':
-            const = 'percolation, %d' % i
+    if params.const == 'feig':
+        params.const = 'feig, %d' % i
+    if params.const == 'percolation':
+        params.const = 'percolation, %d' % i
 
     # Either loads the hashtable from previous runs or loads it
-    if not config['generate_hashtable']:
-        with open(config['hashtable_file'], 'rb') as input_file:
+    if params.hashtable_file_operation in ['use', 'expand']:
+        with open(params.hashtable_file, 'rb') as input_file:
             mitm = pickle.load(input_file)
-        print('Loaded mitm object and hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-    else:
-        mitm = enum_params.MITM(target_generator=target_generator, target_name=const, a_poly_size=a_poly_size,
-                            b_poly_size=b_poly_size, num_of_a_polys=a_interlace, num_of_b_polys=b_interlace,
-                            postproc_funcs=evaluated_postproc_funcs)
+        print('Loaded mitm object and hashtable from %s. Runtime: %s ' %
+              (params.hashtable_file, str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+        if params.hashtable_file_operation == 'expand':
+            mitm.redefine_settings(target_generator=target_generator, target_name=params.const, a_poly_size=params.a_poly_size,
+                                   b_poly_size=params.b_poly_size, num_of_a_polys=params.a_interlace, num_of_b_polys=params.b_interlace,
+                                   postproc_funcs=evaluated_postproc_funcs)
+            print('Updated mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    elif params.hashtable_file_operation == 'generate':
+        mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const, a_poly_size=params.a_poly_size,
+                                b_poly_size=params.b_poly_size, num_of_a_polys=params.a_interlace, num_of_b_polys=params.b_interlace,
+                                postproc_funcs=evaluated_postproc_funcs)
         print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+    if params.hashtable_file_operation in ['expand', 'generate']:
         # a,b polynoms coefficients will be enumerated in [-2,2]
         # one can either set enum_range to set a uniform boundary to all the coefficients,
         # or set a different range to the a's coefficients and b's coefficients.
         # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
         # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-        mitm.build_hashtable(enum_range=poly_coeffs_range, range_a=a_coeffs_range, range_b=b_coeffs_range)
+        mitm.build_hashtable(enum_range=params.poly_coeffs_range, range_a=params.a_coeffs_range, range_b=params.b_coeffs_range)
         print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-        mitm.dec_hashtable['parameters'] = {'target_generator': target_generator, 'target_name': const,
-                                            'a_poly_size': a_poly_size, 'b_poly_size': b_poly_size,
-                                            'num_of_a_polys': a_interlace, 'num_of_b_polys': b_interlace,
+        mitm.dec_hashtable['parameters'] = {'target_generator': target_generator, 'target_name': params.const,
+                                            'a_poly_size': params.a_poly_size, 'b_poly_size': params.b_poly_size,
+                                            'num_of_a_polys': params.a_interlace, 'num_of_b_polys': params.b_interlace,
                                             'postproc_funcs': evaluated_postproc_funcs}
-        config['hashtable_file'] = gen_hashtable_filename(config['hashtable_file'])
-        with open(config['hashtable_file'], 'wb') as output_file:
+        with open(params.hashtable_file, 'wb') as output_file:
             pickle.dump(mitm, output_file, protocol=pickle.HIGHEST_PROTOCOL)
-        print('Stored hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+        print('Stored hashtable as %s. Runtime: %s ' % (params.hashtable_file,
+                                                        str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
 
     # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
     # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
     # (e.g. list, range object etc.)
-    mitm.find_clicks(u_range=u_range, l_range=l_range, c_range=c_range, d_range=d_range)
+    mitm.find_clicks(u_range=params.u_range, l_range=params.l_range, c_range=params.c_range, d_range=params.d_range)
     mitm.delete_hashtable()
     mitm.filter_uniq_params()
     print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_uniq_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-    mitm.filter_only_exp_convergence(print_surprising_nonexp_contfracs)
+    mitm.filter_only_exp_convergence(params.print_surprising_nonexp_contfracs)
     print('Finished fast filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     mitm.filter_clicks_by_approach_type()
@@ -196,8 +212,8 @@ def main(configfile='config.ini'):
 
     if not os.path.isdir('results'):
         os.mkdir('results')
-    os.mkdir('results/%s' % time.strftime('%d%m%y_%H%M'))
-    export_filename = 'results/%s/results' % time.strftime('%d%m%y_%H%M')
+    os.mkdir(os.path.join('results', '%s') % time.strftime('%d%m%y_%H%M'))
+    export_filename = os.path.join('results', '%s', 'results') % time.strftime('%d%m%y_%H%M')
     mitm.export_to_csv(export_filename + '.csv', postproc_funcs)
     print('Finished saving results. Filename: %s.csv. Runtime: %s ' %
           (export_filename, str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
@@ -210,12 +226,14 @@ def main(configfile='config.ini'):
     # Save the configuration file to the results directory
     results_config = ConfigParser()
     results_config.add_section('Setup')
-    results_config.add_section('Data')
-    for config_variable in configfile.CONFIG_PARAMS_TYPES[:-2]:
-        results_config.set('Setup', config_variable, globals()[config_variable])
-    for config_variable in configfile.CONFIG_PARAMS_TYPES[-2:]:
-        results_config.set('Data', config_variable, globals()[config_variable])
-    results_config_filename = export_filename.replace('results', 'config.ini')
+    # results_config.add_section('Data')
+    for config_variable in LEGAL_CONFIG_PARAMS:
+        results_config.set('Setup', config_variable, str(getattr(params, config_variable)))
+    # for config_variable in LEGAL_CONFIG_PARAMS[-2:]:
+    #     results_config.set('Data', config_variable, getattr(params, config_variable))
+    results_config_filename = os.path.split(export_filename)
+    results_config_filename = os.path.join(results_config_filename[0],
+                                           results_config_filename[1].replace('results', 'config.ini'))
     with open(results_config_filename, 'w') as results_config_file:
         results_config.write(results_config_file)
     print('Generated config file of the results. Filename: %s. Runtime: %s ' %

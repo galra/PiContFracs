@@ -14,9 +14,10 @@ class DecimalHashTable(dict):
         if not isinstance(key, dec) and not isinstance(key, str):
             raise TypeError('Only Decimal is supported')
         if isinstance(key, str):
-            return key
-        key_str = key.to_eng_string()
-        return [ key_str[:i+1] for i in self.accuracy_history ], key_str[:self.accuracy+1]
+            key_str = key
+        else:
+            key_str = key.to_eng_string()
+        return [ key_str[:i+1] for i in self.accuracy_history ], (key_str[:self.accuracy+1])
 
     def __setitem__(self, key, value):
         old_keys, cur_key = self._manipulate_key(key)
@@ -45,3 +46,13 @@ class DecimalHashTable(dict):
             if super().__contains__(k):
                 return True
         return super().__contains__(cur_key)
+
+    def __getstate__(self):
+        return (self.accuracy, self.accuracy_history, dict(self))
+
+    def __setstate__(self, state):
+        self.accuracy, self.accuracy_history, data = state
+        self.update(data)
+
+    def __reduce__(self):
+        return (DecimalHashTable, (self.accuracy,), self.__getstate__())

@@ -18,7 +18,7 @@ class ZeroB(Exception):
 # The default diff_mat and first_diff_mat compute the following:
 #   The first diff matrix is a_0 = a_0 / 1
 #   then the i'th iteration (a_0 is the 0'th iteration) is a_0 + b_1 / (a1 + b_2 / (... + b_i / a_i))
-class PiContFrac(basic_algo.PiBasicAlgo):
+class ContFrac(basic_algo.PiBasicAlgo):
     # if b_n = 0 then we get a rational number, and should skip this results. This is what avoid_zero_b for.
     def __init__(self, a_coeffs, b_coeffs, avoid_zero_b=True, check_b_threshold=False, b_threshold=10**10, diff_mat_gen=None,
                  first_diff_mat=None, target_val=None, logging=False, dtype=int):
@@ -35,7 +35,7 @@ class PiContFrac(basic_algo.PiBasicAlgo):
         if not isinstance(b_coeffs[0], list) and not isinstance(b_coeffs[0], tuple):
             b_coeffs = [b_coeffs]
 
-        params = {'a_coeffs': a_coeffs, 'b_coeffs': b_coeffs, 'pi': 1}
+        params = {'a_coeffs': a_coeffs, 'b_coeffs': b_coeffs, 'contfrac_res': 1}
         if first_diff_mat is None:
             self._auto_first_diff_mat = True
             first_diff_mat = self._autogen_first_diff_mat(params, dtype)
@@ -93,10 +93,10 @@ class PiContFrac(basic_algo.PiBasicAlgo):
             p_i = dec(new_vec_p[0])
             q_i = dec(new_vec_q[0])
             if q_i.is_zero():
-                pi_i = dec('NaN')
+                contfrac_res_i = dec('NaN')
             else:
-                pi_i = p_i / q_i
-            params['pi'] = pi_i
+                contfrac_res_i = p_i / q_i
+            params['contfrac_res'] = contfrac_res_i
         new_diff_mat = (new_vec_p, new_vec_q)
 
         # OLD COMMENTS - MAY BE IRRELEVANT:
@@ -110,10 +110,10 @@ class PiContFrac(basic_algo.PiBasicAlgo):
         p = dec(diff_vec_p[0])
         q = dec(diff_vec_q[0])
         if q.is_zero():
-            pi = dec('NaN')
+            contfrac_res = dec('NaN')
         else:
-            pi = p / q
-        params['pi'] = pi
+            contfrac_res = p / q
+        params['contfrac_res'] = contfrac_res
         return (params, diff_mat)
 
     def is_accuracy_met(self, accuracy, params, diff_mat, i):
@@ -129,7 +129,7 @@ class PiContFrac(basic_algo.PiBasicAlgo):
             return
 
     def _default_diff_mat_gen(self, i, a_coeffs, b_coeffs):
-        a2p = PiContFrac._array_to_polynom
+        a2p = ContFrac._array_to_polynom
         a_i = a2p(a_coeffs[i % len(a_coeffs)], divmod(i, len(a_coeffs))[0])
         b_i = a2p(b_coeffs[(i-1) % len(b_coeffs)], divmod(i, len(b_coeffs))[0])
         if self._avoid_zero_b and b_i == 0:
@@ -171,22 +171,22 @@ class PiContFrac(basic_algo.PiBasicAlgo):
             raise ValueError('No target value to compare to.')
 
         try:
-            r = self.params_log['pi'][-1] - comp_val
+            r = self.params_log['contfrac_res'][-1] - comp_val
             # if not r.is_normal():
             return abs(r)
             # return abs(r - round(r)
         except:
             raise RuntimeError('Run gen_iterations first. No PI was generated!')
 
-    def get_pi(self):
-        return self.params_log['pi'][-1]
+    def get_result(self):
+        return self.params_log['contfrac_res'][-1]
 
     def get_p_q(self):
         diff_vec_p, diff_vec_q = self.diff_mats[-1]
         return diff_vec_p[0], diff_vec_q[0]
 
-    def is_pi_valid(self):
-        return self.params_log['pi'][-1].is_normal()
+    def is_result_valid(self):
+        return self.params_log['contfrac_res'][-1].is_normal()
 
     def estimate_approach_type_and_params(self, iters=600, initial_cutoff=200, iters_step=50):
         # iters = 5000
@@ -275,32 +275,32 @@ False if it's sub exponential (e.g. linear)."""
         delta_pair = []
         delta_odd = []
         self.gen_iterations(initial_cutoff)
-        res_0 = self.get_pi()
+        res_0 = self.get_result()
         # if res_0.is_nan():
         #     print('res_0 nan')
         #     print(self.get_p_q())
         self.add_iterations(1)
-        res_1 = self.get_pi()
+        res_1 = self.get_result()
         # if res_1.is_nan():
         #     print('res_1 nan')
         #     print(self.get_p_q())
         self.add_iterations(1)
-        res_2 = self.get_pi()
+        res_2 = self.get_result()
         # if res_2.is_nan():
         #     print('res_2 nan')
         #     print(self.get_p_q())
         self.add_iterations(1)
-        res_3 = self.get_pi()
+        res_3 = self.get_result()
         # if res_3.is_nan():
         #     print('res_3 nan')
         #     print(self.get_p_q())
         self.add_iterations(1)
-        res_4 = self.get_pi()
+        res_4 = self.get_result()
         # if res_4.is_nan():
         #     print('res_4 nan')
         #     print(self.get_p_q())
         self.add_iterations(1)
-        res_5 = self.get_pi()
+        res_5 = self.get_result()
         # if res_5.is_nan():
         #     print('res_5 nan')
         #     print(self.get_p_q())
@@ -324,17 +324,17 @@ False if it's sub exponential (e.g. linear)."""
         for i in range(initial_cutoff+iters_step, iters+1, iters_step):
             # -3 for the iterations of res_1, res_2, res_3 that were already executed
             self.add_iterations(iters_step - 5)
-            res_0 = self.get_pi()
+            res_0 = self.get_result()
             self.add_iterations(1)
-            res_1 = self.get_pi()
+            res_1 = self.get_result()
             self.add_iterations(1)
-            res_2 = self.get_pi()
+            res_2 = self.get_result()
             self.add_iterations(1)
-            res_3 = self.get_pi()
+            res_3 = self.get_result()
             self.add_iterations(1)
-            res_4 = self.get_pi()
+            res_4 = self.get_result()
             self.add_iterations(1)
-            res_5 = self.get_pi()
+            res_5 = self.get_result()
             delta_pair.append((i, abs(res_2 - res_0)))
             # if not delta_pair[-1][1].is_normal() and not delta_pair[-1][1].is_zero():
             #     print('res_0: %s' % res_0.to_eng_string())
