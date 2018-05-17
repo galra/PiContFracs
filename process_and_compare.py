@@ -10,17 +10,15 @@ import matplotlib.pyplot as plt
 import scipy.stats
 import os
 from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch
+import enum_params
+from postprocfuncs import EVALUATED_POSTPROC_FUNCS, POSTPROC_FUNCS
+from lhs_evaluators import ULCDEvaluator
+import json
+from latex import generate_latex
 
 dc = decimal.getcontext().prec=150
 
-
-def safe_inverse(x):
-    if x.is_zero():
-        return dec('inf')
-    else:
-        return 1/x
-
-def load_enum_csv_as_cont_fracs_csv(csv_path, constant=None):
+def old_enum_csv_to_pdf(csv_path, constant=None):
     csvfile_in = open(csv_path)
     csvreader = csv.reader(csvfile_in)
     contfrac_params = []
@@ -31,38 +29,92 @@ def load_enum_csv_as_cont_fracs_csv(csv_path, constant=None):
                          'feig': gen_real_feig,
                          'euler_masch': gen_real_euler_masch}
 
-    if constant in consts_generators:
-        constant = consts_generators[constant]()
-    elif constant.startswith('feig'):
-        i = int(constant.split(',')[1])
-        constant = consts_generators['feig'](i)
+    if constant:
+        if constant in consts_generators:
+            constant_gen = consts_generators[constant]
+        elif constant.startswith('feig'):
+            i = int(constant.split(',')[1])
+            constant_gen = lambda: consts_generators['feig'](i)
 
-    # WARNING: This block is a HUGE security issue!
+    csv_iter = enumerate(csvreader)
+    _, row = next(csv_iter)
+    postproc_funcs = row[1].strip('[').strip(']').replace("'", "").split(', ')
+    evaluated_postproc_funcs = [ EVALUATED_POSTPROC_FUNCS[POSTPROC_FUNCS.index(ppf)] for ppf in postproc_funcs]
+    if not constant:
+        if len(row) > 2:
+            constant = row[3]
+            if constant in consts_generators:
+                constant_gen = consts_generators[constant]
+            elif constant.startswith('feig'):
+                i = int(constant.split(',')[1])
+                constant_gen = lambda: consts_generators['feig'](i)
+        else:
+            constant = 'pi'
+            constant_gen = consts_generators[constant]
+    _, row = next(csv_iter)
+
+    mitm = enum_params.MITM(target_generator=constant_gen, target_name=constant, postproc_funcs=evaluated_postproc_funcs)
     for i,row in enumerate(csvreader):
-        if i == 0:
-            # postproc_funcs = eval(row[1])
-            # postproc_funcs = [ eval(p) for p in postproc_funcs ]
-            postproc_funcs = [safe_inverse, lambda x: x, lambda x: x**(type(x)(0.5))]
-            continue
-        if i == 1:
-            if not constant:
-                constant = row[3]
-                if constant in consts_generators:
-                    constant = consts_generators[constant]()
-                elif constant.startswith('feig'):
-                    i = int(constant.split(',')[1])
-                    constant = consts_generators['feig'](i)
-
-        a_params = eval(row[0])
-        b_params = eval(row[1])
+        a_params = json.loads(row[0].replace('(', '[').replace(',)', ']').replace(')', ']'))
+        b_params = json.loads(row[1].replace('(', '[').replace(',)', ']').replace(')', ']'))
+        if not isinstance(a_params[0], list):
+            a_params = [a_params]
+        if not isinstance(b_params[0], list):
+            b_params = [b_params]
         u, l, c, d = [ int(c) for c in row[3:7] ]
-        gen_ulcd_func = lambda u, l, c, d: lambda x: (u/x + x/l + c) / d
-        gen_func = lambda x, y: lambda z: x(y(z))
-        target_formula = gen_func(postproc_funcs[int(row[2])], gen_ulcd_func(u, l, c, d))
-        contfrac_params.append({'a_params': a_params, 'b_params': b_params, 'target_formula': target_formula,
-                           'target_x': constant})
+        ulcd_obj = ULCDEvaluator((u, l, c, d), constant_gen())
+        post_func_ind = int(row[2])
+        ab = (a_params, b_params)
+        mitm.filtered_params.append((ab, ulcd_obj, post_func_ind, None))
 
-    return contfrac_params
+    pdf_path = csv_path.strip('.csv')
+    eqns = mitm.get_results_as_eqns(postproc_funcs)
+    generate_latex(pdf_path, eqns)
+    print('Generated PDF of results. Filename: %s.pdf.' % (pdf_path))
+
+# def load_enum_csv_as_cont_fracs_csv(csv_path, constant=None):
+#     csvfile_in = open(csv_path)
+#     csvreader = csv.reader(csvfile_in)
+#     contfrac_params = []
+#     postproc_funcs = []
+#
+#     consts_generators = {'e': gen_real_e,
+#                          'pi': gen_real_pi,
+#                          'feig': gen_real_feig,
+#                          'euler_masch': gen_real_euler_masch}
+#
+#     if constant in consts_generators:
+#         constant = consts_generators[constant]()
+#     elif constant.startswith('feig'):
+#         i = int(constant.split(',')[1])
+#         constant = consts_generators['feig'](i)
+#
+#     # WARNING: This block is a HUGE security issue!
+#     for i,row in enumerate(csvreader):
+#         if i == 0:
+#             # postproc_funcs = eval(row[1])
+#             # postproc_funcs = [ eval(p) for p in postproc_funcs ]
+#             postproc_funcs = [safe_inverse, lambda x: x, lambda x: x**(type(x)(0.5))]
+#             continue
+#         if i == 1:
+#             if not constant:
+#                 constant = row[3]
+#                 if constant in consts_generators:
+#                     constant = consts_generators[constant]()
+#                 elif constant.startswith('feig'):
+#                     i = int(constant.split(',')[1])
+#                     constant = consts_generators['feig'](i)
+#
+#         a_params = eval(row[0])
+#         b_params = eval(row[1])
+#         u, l, c, d = [ int(c) for c in row[3:7] ]
+#         gen_ulcd_func = lambda u, l, c, d: lambda x: (u/x + x/l + c) / d
+#         gen_func = lambda x, y: lambda z: x(y(z))
+#         target_formula = gen_func(postproc_funcs[int(row[2])], gen_ulcd_func(u, l, c, d))
+#         contfrac_params.append({'a_params': a_params, 'b_params': b_params, 'target_formula': target_formula,
+#                            'target_x': constant})
+#
+#     return contfrac_params
 
 def load_cont_fracs(csv_path):
     csvfile = open(csv_path)
@@ -224,7 +276,7 @@ def analyze_contfracs_csv(csv_path, filetype='enum_res'):
         fig_title = '%s - %dth row' % (filename_no_ext, i+1)
         plot_errors(errors, title=fig_title,
                     show_plot=False, save_fig_path=output_fig_path, lin_fit=lf)
-        conv_types.append(cf.is_convergence_exponential())
+        conv_types.append(cf.is_convergence_fast())
         cf.estimate_approach_type_and_params()
         conv_params.append(cf.get_approach_type_and_params())
     return conv_types, conv_params

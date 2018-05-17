@@ -17,15 +17,12 @@ def generate_latex(filename, eqns=[]):
 
 
 def latex_cont_frac(a, b, current_iteration=''):
-    len_a = len(a)
-    len_b = len(b)
-
     if current_iteration == '':
-        current_iteration = str(a[len_a - 1]) + ' + \dots'
+        current_iteration = str(a[-1]) + ' + \dots'
 
-    if len_a > 1:
-        new_iteration = r'{0} + \frac{{ {1} }} {{ {2} }}'.format(a[len_a - 2], b[len_b - 1], current_iteration)
-        return latex_cont_frac(a[:len_a - 1], b[:len_b - 1], new_iteration)
+    if len(a) > 1:
+        new_iteration = r'{0} + \frac{{ {1} }} {{ {2} }}'.format(a[-2], b[-1], current_iteration)
+        return latex_cont_frac(a[:-1], b[:-1], new_iteration)
     else:
         return current_iteration
     

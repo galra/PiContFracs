@@ -224,8 +224,8 @@ class ContFrac(basic_algo.PiBasicAlgo):
     def set_approach_type_and_params(self, convergence_info):
         self._approach_type, self._approach_params = convergence_info
 
-    def is_convergence_exponential(self, find_poly_parameter=False, iters=600, initial_cutoff=200, iters_step=50,
-                                   exponential_threshold=1.1):
+    def is_convergence_fast(self, find_poly_parameter=False, iters=600, initial_cutoff=200, iters_step=50,
+                            exponential_threshold=1.1):
         """Returns true if the convergence type is exponential or over exponential.
 False if it's sub exponential (e.g. linear)."""
         if iters_step < 6:

@@ -125,10 +125,8 @@ CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        # json is used to support interlace lists
                        'a_coeffs_range': json.loads,
                        'b_coeffs_range': json.loads,
-                       'u_range': json.loads,
-                       'l_range': json.loads,
-                       'c_range': json.loads,
-                       'd_range': json.loads,
+                       'lhs_type': ConfigParser.string_parameter_parser,
+                       'lhs_params': json.loads,
                        'i': int,
                        'hashtable_file_operation': ConfigParser.string_parameter_parser,
                        'hashtable_file': ConfigParser.string_parameter_parser}
