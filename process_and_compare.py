@@ -9,7 +9,7 @@ import math
 import matplotlib.pyplot as plt
 import scipy.stats
 import os
-from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch
+from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation
 import enum_params
 from postprocfuncs import EVALUATED_POSTPROC_FUNCS, POSTPROC_FUNCS
 from lhs_evaluators import ULCDEvaluator
@@ -27,27 +27,34 @@ def old_enum_csv_to_pdf(csv_path, constant=None):
     consts_generators = {'e': gen_real_e,
                          'pi': gen_real_pi,
                          'feig': gen_real_feig,
-                         'euler_masch': gen_real_euler_masch}
+                         'euler_masch': gen_real_euler_masch,
+                         'percolation': gen_real_percolation}
 
     if constant:
         if constant in consts_generators:
             constant_gen = consts_generators[constant]
         elif constant.startswith('feig'):
-            i = int(constant.split(',')[1])
+            i = int(constant.split(',')[1].strip())
             constant_gen = lambda: consts_generators['feig'](i)
+        elif constant.startswith('percolation'):
+            i = int(constant.split(',')[1].strip())
+            constant_gen = lambda: consts_generators['percolation'](i)
 
     csv_iter = enumerate(csvreader)
     _, row = next(csv_iter)
     postproc_funcs = row[1].strip('[').strip(']').replace("'", "").split(', ')
     evaluated_postproc_funcs = [ EVALUATED_POSTPROC_FUNCS[POSTPROC_FUNCS.index(ppf)] for ppf in postproc_funcs]
     if not constant:
-        if len(row) > 2:
+        if len(row) > 2 and row[3]:
             constant = row[3]
             if constant in consts_generators:
                 constant_gen = consts_generators[constant]
             elif constant.startswith('feig'):
-                i = int(constant.split(',')[1])
-                constant_gen = lambda: consts_generators['feig'](i)
+                _feig_index = int(constant.split(',')[1].strip())
+                constant_gen = lambda: consts_generators['feig'](_feig_index)
+            elif constant.startswith('percolation'):
+                _percolation_index = int(constant.split(',')[1].strip())
+                constant_gen = lambda: consts_generators['percolation'](_percolation_index)
         else:
             constant = 'pi'
             constant_gen = consts_generators[constant]

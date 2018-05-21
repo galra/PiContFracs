@@ -9,6 +9,8 @@ from latex import latex_cont_frac
 from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
 from postprocfuncs import POSTPROC_FUNCS_LATEX
 from basic_enum_params import BasicEnumPolyParams
+import io
+import shutil
 
 ENUMERATOR_TYPES = {'ulcd': ULCDEnumerator,
                     'rationalfunc': RationalFuncEnumerator}
@@ -126,6 +128,7 @@ class MITM:
             if int(100 * i / lhs_iter_len) > progress_percentage:
                 progress_percentage = int(100 * i / lhs_iter_len)
                 print('\r%d%%' % progress_percentage, end='')
+                sys.stdout.flush()
         print('')
         self.filtered_params = filtered_params
 
@@ -167,6 +170,7 @@ class MITM:
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
                 print('\r%d%%' % progress_percentage, end='')
+                sys.stdout.flush()
         print('')
         self.filtered_params = refined_params
 
@@ -207,6 +211,7 @@ class MITM:
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
                 print('\r%d%%' % progress_percentage, end='')
+                sys.stdout.flush()
         print('')
         self.filtered_params = filtered_params_list
 
@@ -243,6 +248,7 @@ class MITM:
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
                 print('\r%d%%' % progress_percentage, end='')
+                sys.stdout.flush()
         print('')
         # if filter_uniq_list:
         #     self.uniq_params = params_list
@@ -256,7 +262,7 @@ class MITM:
         del self.dec_hashtable
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
 
-    def get_results_as_eqns(self, postfuncs):
+    def get_results_as_eqns(self, postfuncs, ignore_zerob_exceptions=True):
         eqns = []
         eval_poly = cont_fracs.ContFrac._array_to_polynom
         known_targets = {'pi': '\pi',
@@ -264,8 +270,14 @@ class MITM:
 
         for ab, lhs_res_obj, post_func_ind, convergence_info in self.filtered_params:
             pa, pb = ab
-            cont_frac, postproc_res, lhs_res_obj = self.build_contfrac_from_params((ab, lhs_res_obj, post_func_ind,
-                                                                                                   convergence_info))
+            try:
+                cont_frac, postproc_res, lhs_res_obj = self.build_contfrac_from_params((ab, lhs_res_obj, post_func_ind,
+                                                                                        convergence_info))
+            except cont_fracs.ZeroB:
+                if ignore_zerob_exceptions:
+                    continue
+                else:
+                    raise
 
             depth = 5
             a = [eval_poly(pa[0], i) for i in range(depth)]
@@ -288,23 +300,25 @@ class MITM:
         return eqns
 
     def export_to_csv(self, filename, postfuncs):
-        csvfile = open(filename, 'w', newline='')
-        csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(['postproc_funcs', postfuncs, 'target_name', self.target_name])
-        csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'procpost_func index',
-                            'LHS type', 'LHS params',
-                            'convergence type', 'convergence rate', 'postfunc(cont_frac)',
-                            'LHS val'])
-        for ab, lhs_res_obj, post_func_ind, convergence_info in self.filtered_params:
-            pa, pb = ab
-            lhs_type = EVALUATOR2TYPE[type(lhs_res_obj)]
-            cont_frac, postproc_res, lhs_res_obj = self.build_contfrac_from_params((ab, lhs_res_obj,
-                                                                                                   post_func_ind,
-                                                                                                   convergence_info))
-            csvwriter.writerow([pa, pb, post_func_ind, lhs_type, lhs_res_obj.get_params(),
-                                convergence_info[0], convergence_info[1],
-                                postproc_res.to_eng_string(), lhs_res_obj.get_val().to_eng_string()])
-        csvfile.close()
+        with io.StringIO(newline='') as csvbuffer:
+            csvwriter = csv.writer(csvbuffer)
+            csvwriter.writerow(['postproc_funcs', postfuncs, 'target_name', self.target_name])
+            csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'procpost_func index',
+                                'LHS type', 'LHS params',
+                                'convergence type', 'convergence rate', 'postfunc(cont_frac)',
+                                'LHS val'])
+            for ab, lhs_res_obj, post_func_ind, convergence_info in self.filtered_params:
+                pa, pb = ab
+                lhs_type = EVALUATOR2TYPE[type(lhs_res_obj)]
+                cont_frac, postproc_res, lhs_res_obj = self.build_contfrac_from_params((ab, lhs_res_obj,
+                                                                                        post_func_ind,
+                                                                                        convergence_info))
+                csvwriter.writerow([pa, pb, post_func_ind, lhs_type, lhs_res_obj.get_params(),
+                                    convergence_info[0], convergence_info[1],
+                                    postproc_res.to_eng_string(), lhs_res_obj.get_val().to_eng_string()])
+            with open(filename, 'w', newline='') as csvfile:
+                csvbuffer.seek(0)
+                shutil.copyfileobj(csvbuffer, csvfile)
 
     def build_contfrac_from_params(self, params, iterations=3000):
         ab, lhs_res_obj, post_func_ind, convergence_info = params
