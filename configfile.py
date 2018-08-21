@@ -2,6 +2,7 @@ import configparser
 import json
 import re
 import os
+from postprocfuncs import POSTPROC_FUNCS
 
 
 class ConfigParser(configparser.ConfigParser):
@@ -90,6 +91,9 @@ class ConfigParser(configparser.ConfigParser):
             filename = old_versions[-1]
         self.config['hashtable_file'] = filename
 
+    def _gen_postproc_funcs_filter(self):
+        self.config['postproc_funcs_filter'] = [ POSTPROC_FUNCS.index(f) for f in self.config['postproc_funcs_filter'] ]
+
     # Load a configuration file
     def _load_config(self, file_name='config.ini'):
         self.config = {}
@@ -105,6 +109,7 @@ class ConfigParser(configparser.ConfigParser):
             for item_key, item_val in parsed_config[section].items():
                 self.config[item_key] = self._cast_param_val(item_key, item_val)
         self._gen_hashtable_filename()
+        self._gen_postproc_funcs_filter()
 
         if self.config['hashtable_file_operation'] not in ['generate', 'expand', 'use']:
             raise ValueError('Illegal value for hashtable_file_operation')
@@ -127,6 +132,7 @@ CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        'b_coeffs_range': json.loads,
                        'lhs_type': ConfigParser.string_parameter_parser,
                        'lhs_params': json.loads,
-                       'i': int,
+                       'postproc_funcs_filter': json.loads,
+                       # 'i': int,
                        'hashtable_file_operation': ConfigParser.string_parameter_parser,
                        'hashtable_file': ConfigParser.string_parameter_parser}

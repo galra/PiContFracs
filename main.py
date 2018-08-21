@@ -9,7 +9,7 @@ import time
 import datetime
 from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation
 from postprocfuncs import POSTPROC_FUNCS, EVALUATED_POSTPROC_FUNCS
-import dill as pickle  # Makes sure pickle also supports Lambda functions
+import dill as pickle
 from latex import generate_latex
 import os
 from configfile import ConfigParser
@@ -150,7 +150,7 @@ def main(configfile='config.ini'):
         os.mkdir('results')
     os.mkdir(os.path.join('results', '%s') % time.strftime('%d%m%y_%H%M'))
     export_filename = os.path.join('results', '%s', 'results') % time.strftime('%d%m%y_%H%M')
-    mitm.export_to_csv(export_filename + '.csv', POSTPROC_FUNCS)
+    mitm.export_to_csv(export_filename + '.csv')
     print('Finished saving results. Filename: %s.csv. Runtime: %s ' %
           (export_filename, str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
 

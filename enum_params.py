@@ -7,7 +7,7 @@ import sys
 import time
 from latex import latex_cont_frac
 from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
-from postprocfuncs import POSTPROC_FUNCS_LATEX
+from postprocfuncs import POSTPROC_FUNCS ,POSTPROC_FUNCS_LATEX
 from basic_enum_params import BasicEnumPolyParams
 import io
 import shutil
@@ -22,8 +22,9 @@ ENUMERATOR2TYPE = { v: k for k, v in ENUMERATOR_TYPES.items() }
 
 # do we still want to keep the default values here? (some of them require special imports that are not needed otherwise)
 class MITM:
-    def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x], trunc_integer=True,
-                 hashtable_prec=6, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
+    def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
+                 postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=6,
+                 a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
                  enum_only_exp_conv=True, num_of_iterations=100, threshold=None, prec=50):
         self.bep = BasicEnumPolyParams(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                                        num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
@@ -32,6 +33,7 @@ class MITM:
         self.target_generator = target_generator
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
+        self.postproc_funcs_filter = postproc_funcs_filter
         self.trunc_integer = trunc_integer
         self.hashtable_prec = hashtable_prec
         self.prec = prec
@@ -59,6 +61,8 @@ class MITM:
         print('0%', end='')
         sys.stdout.flush()
 
+        filtered_postproc_funcs = [(i, f) for i,f in enumerate(self.postproc_funcs) if i in self.postproc_funcs_filter ]
+
         for i, (cont_frac, pa, pb) in enumerate(itr):
             if int(100 * i / itr_len) > progress_percentage:
                 progress_percentage = int(100 * i / itr_len)
@@ -85,8 +89,10 @@ class MITM:
                     print(cur_cont_frac)
                 continue
 
-            for post_func_ind, post_f in enumerate(self.postproc_funcs):
+            for post_func_ind, post_f in filtered_postproc_funcs:
                 # print(cur_cont_frac)
+                if post_func_ind not in self.postproc_funcs_filter:
+                    pass
                 try:
                     k = post_f(cur_cont_frac)
                 except:
@@ -163,9 +169,17 @@ class MITM:
                     print(lhs)
                     print('')
                 if (signed_lhs > 0 and signed_rhs < 0) or (signed_lhs < 0 and signed_rhs > 0):
+                    # print('flipping sign')
                     lhs_res_obj.flip_sign()
                     signed_lhs *= -1
-                lhs_res_obj.add_int(int(signed_rhs - signed_lhs))
+                try:
+                    lhs_res_obj.add_int(int(signed_rhs - signed_lhs))
+                except:
+                    print(signed_rhs)
+                    print(signed_lhs)
+                    print(int(signed_rhs - signed_lhs))
+                    exit()
+                lhs_res_obj.canonalize_params()
                 refined_params.append((ab, lhs_res_obj, post_func_ind, convergence_info))
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
@@ -280,8 +294,8 @@ class MITM:
                     raise
 
             depth = 5
-            a = [eval_poly(pa[0], i) for i in range(depth)]
-            b = [eval_poly(pb[0], i) for i in range(depth)]
+            a = [eval_poly(pa[i % len(pa)], i) for i in range(depth)]
+            b = [eval_poly(pb[i % len(pb)], i) for i in range(depth)]
 
             if self.target_name in known_targets:
                 target_name = known_targets[self.target_name]
@@ -299,11 +313,12 @@ class MITM:
 
         return eqns
 
-    def export_to_csv(self, filename, postfuncs):
+    def export_to_csv(self, filename):
         with io.StringIO(newline='') as csvbuffer:
             csvwriter = csv.writer(csvbuffer)
-            csvwriter.writerow(['postproc_funcs', postfuncs, 'target_name', self.target_name])
-            csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'procpost_func index',
+            # csvwriter.writerow(['postproc_funcs', postfuncs, 'target_name', self.target_name])
+            csvwriter.writerow(['target_name', self.target_name])
+            csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'postproc_func',
                                 'LHS type', 'LHS params',
                                 'convergence type', 'convergence rate', 'postfunc(cont_frac)',
                                 'LHS val'])
@@ -313,7 +328,10 @@ class MITM:
                 cont_frac, postproc_res, lhs_res_obj = self.build_contfrac_from_params((ab, lhs_res_obj,
                                                                                         post_func_ind,
                                                                                         convergence_info))
-                csvwriter.writerow([pa, pb, post_func_ind, lhs_type, lhs_res_obj.get_params(),
+                # csvwriter.writerow([pa, pb, post_func_ind, lhs_type, lhs_res_obj.get_params(),
+                #                     convergence_info[0], convergence_info[1],
+                #                     postproc_res.to_eng_string(), lhs_res_obj.get_val().to_eng_string()])
+                csvwriter.writerow([pa, pb, POSTPROC_FUNCS[post_func_ind], lhs_type, lhs_res_obj.get_params(),
                                     convergence_info[0], convergence_info[1],
                                     postproc_res.to_eng_string(), lhs_res_obj.get_val().to_eng_string()])
             with open(filename, 'w', newline='') as csvfile:
