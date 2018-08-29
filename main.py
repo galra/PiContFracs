@@ -93,9 +93,7 @@ def main(configfile='config.ini'):
               (params.hashtable_file, str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
         if params.hashtable_file_operation == 'expand':
             mitm.redefine_settings(target_generator=target_generator, target_name=params.const,
-                                   ab_poly_class=params.ab_polys_type, a_poly_size=params.a_poly_size,
-                                   b_poly_size=params.b_poly_size, num_of_a_polys=params.a_interlace, num_of_b_polys=params.b_interlace,
-                                   postproc_funcs=EVALUATED_POSTPROC_FUNCS)
+                                   postproc_funcs=EVALUATED_POSTPROC_FUNCS, ab_poly_class=params.ab_polys_type)
             print('Updated mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     elif params.hashtable_file_operation == 'generate':
         mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const, a_poly_size=params.a_poly_size,

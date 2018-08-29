@@ -12,6 +12,7 @@ from basic_enum_params import BasicEnumPolyParams
 import io
 import shutil
 import numpy
+from basic_algo import set_precision
 
 ENUMERATOR_TYPES = {'ulcd': ULCDEnumerator,
                     'rationalfunc': RationalFuncEnumerator}
@@ -42,7 +43,9 @@ class MITM:
         self.filtered_params = []
 
     def redefine_settings(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
-                          trunc_integer=True, hashtable_prec = 6, prec=50):
+                          trunc_integer=True, ab_poly_class=BasicEnumPolyParams, hashtable_prec = 6, prec=50):
+        if not isinstance(self.bep, ab_poly_class):
+            self.bep = ab_poly_class(prec=self.prec, enum_only_exp_conv=True, avoid_int_roots=True, should_gen_contfrac=True, num_of_iterations=100, threshold=None)
         self.target_generator = target_generator
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
@@ -50,6 +53,7 @@ class MITM:
         self.hashtable_prec = hashtable_prec
         self.dec_hashtable.update_accuracy(self.hashtable_prec)
         self.filtered_params = []
+
         set_precision(prec)
 
     def build_hashtable(self, enum_range=None, range_a=None, range_b=None, prec=None):
