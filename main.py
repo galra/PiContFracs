@@ -7,7 +7,8 @@ import enum_params
 from decimal import Decimal as dec
 import time
 import datetime
-from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation
+from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation, \
+                            gen_real_zeta
 from postprocfuncs import POSTPROC_FUNCS, EVALUATED_POSTPROC_FUNCS
 import dill as pickle
 from latex import generate_latex
@@ -62,14 +63,16 @@ def main(configfile='config.ini'):
         setattr(params, config_variable, config[config_variable])
         print('%s is set up to %s ' % (config_variable, getattr(params, config_variable)))
 
-    gen_real_feig_const = lambda: gen_real_feig(i)
-    gen_real_percolation_const = lambda: gen_real_percolation(i)
+    gen_real_feig_const = lambda: gen_real_feig(params.i)
+    gen_real_percolation_const = lambda: gen_real_percolation(params.i)
+    gen_real_zeta_conts = lambda: gen_real_zeta(params.i)
 
     consts_generators = {'e': gen_real_e,
                          'pi': gen_real_pi,
                          'feig': gen_real_feig_const,
                          'euler_masch': gen_real_euler_masch,
-                         'percolation': gen_real_percolation_const}
+                         'percolation': gen_real_percolation_const,
+                         'zeta': gen_real_zeta_conts}
     if params.const in consts_generators:
         target_generator = consts_generators[params.const]
     else:
@@ -89,7 +92,8 @@ def main(configfile='config.ini'):
         print('Loaded mitm object and hashtable from %s. Runtime: %s ' %
               (params.hashtable_file, str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
         if params.hashtable_file_operation == 'expand':
-            mitm.redefine_settings(target_generator=target_generator, target_name=params.const, a_poly_size=params.a_poly_size,
+            mitm.redefine_settings(target_generator=target_generator, target_name=params.const,
+                                   ab_poly_class=params.ab_polys_type, a_poly_size=params.a_poly_size,
                                    b_poly_size=params.b_poly_size, num_of_a_polys=params.a_interlace, num_of_b_polys=params.b_interlace,
                                    postproc_funcs=EVALUATED_POSTPROC_FUNCS)
             print('Updated mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
@@ -141,6 +145,9 @@ def main(configfile='config.ini'):
         mitm.filter_uniq_params()
         mitm.filter_uniq_params()
         print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
+              (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+        mitm.filter_integer_roots_numerators()
+        print('Finished filtering parameters with integer numerators roots. Number of unique parameters: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     except KeyboardInterrupt as e:
         print('Canceled refining clicks, 14 digits accuracy, 40000 iterations. Runtime: %s ' %

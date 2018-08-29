@@ -11,6 +11,7 @@ from postprocfuncs import POSTPROC_FUNCS ,POSTPROC_FUNCS_LATEX
 from basic_enum_params import BasicEnumPolyParams
 import io
 import shutil
+import numpy
 
 ENUMERATOR_TYPES = {'ulcd': ULCDEnumerator,
                     'rationalfunc': RationalFuncEnumerator}
@@ -24,12 +25,12 @@ ENUMERATOR2TYPE = { v: k for k, v in ENUMERATOR_TYPES.items() }
 class MITM:
     def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
                  postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=6,
-                 a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
+                 ab_poly_class=BasicEnumPolyParams, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
                  enum_only_exp_conv=True, num_of_iterations=100, threshold=None, prec=50):
-        self.bep = BasicEnumPolyParams(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
-                                       num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
-                                       avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
-                                       num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
+        self.bep = ab_poly_class(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
+                                 num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
+                                 avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
+                                 num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
         self.target_generator = target_generator
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
@@ -105,7 +106,8 @@ class MITM:
                     k -= int(k)
                 if k not in self.dec_hashtable:
                     self.dec_hashtable[k] = []
-                self.dec_hashtable[k].append(((pa, pb), post_func_ind))
+                if ((pa, pb), post_func_ind) not in self.dec_hashtable[k]:
+                    self.dec_hashtable[k].append(((pa, pb), post_func_ind))
         print()
 
     def find_clicks(self, lhs_type, lhs_enumerator_params):
@@ -193,13 +195,25 @@ class MITM:
         for params in self.filtered_params:
             is_unique = True
             for uniq_params in non_equiv_params:
-                _, uniq_lhs_res_obj, _, _ = uniq_params
+                uniq_lhs_res_obj= uniq_params[1]
                 if uniq_lhs_res_obj.is_equiv(uniq_params, params):
                     is_unique = False
                     break
             if is_unique:
                 non_equiv_params.append(params)
         self.filtered_params = non_equiv_params
+
+    def filter_integer_roots_numerators(self):
+        valid_params = []
+        for params in self.filtered_params:
+            b = params[0][1]
+            for b_p in b:
+                b_p_roots = numpy.roots(b_p)
+                b_p_real_roots = [ r for r in b_p_roots if abs(r.imag) < 0.001 ]
+                b_p_int_roots = [ r for r in b_p_real_roots if abs(r - round(r)) < 0.001 ]
+            if not b_p_int_roots:
+                valid_params.append(params)
+        self.filtered_params = valid_params
 
     def filter_only_exp_convergence(self, print_surprising_nonexp_contfracs=False):  # , filter_uniq_list=True):
         # if filter_uniq_list:

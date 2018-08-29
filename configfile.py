@@ -3,6 +3,7 @@ import json
 import re
 import os
 from postprocfuncs import POSTPROC_FUNCS
+from basic_enum_params import BasicEnumPolyParams, IndexedParameterEnumPolyParams
 
 
 class ConfigParser(configparser.ConfigParser):
@@ -117,11 +118,18 @@ class ConfigParser(configparser.ConfigParser):
     def get_config(self):
         return self.config
 
+    @staticmethod
+    def poly_type_parser(s):
+        s = ConfigParser.string_parameter_parser(s)
+        if s not in AB_POLYS_TYPES:
+            raise ValueError('%s is not a valid type of a polynom' % s)
+        return AB_POLYS_TYPES[s]
 
 
 CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        'ulcd_range': json.loads,
                        'const': ConfigParser.string_parameter_parser,
+                       'ab_polys_type': ConfigParser.string_parameter_parser,
                        'a_poly_size': int,
                        'b_poly_size': int,
                        'a_interlace': int,
@@ -133,6 +141,9 @@ CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        'lhs_type': ConfigParser.string_parameter_parser,
                        'lhs_params': json.loads,
                        'postproc_funcs_filter': json.loads,
-                       # 'i': int,
+                       'i': int,
                        'hashtable_file_operation': ConfigParser.string_parameter_parser,
                        'hashtable_file': ConfigParser.string_parameter_parser}
+
+AB_POLYS_TYPES = {'normal': BasicEnumPolyParams,
+                  'indexed': IndexedParameterEnumPolyParams}

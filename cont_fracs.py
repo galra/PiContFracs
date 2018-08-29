@@ -83,6 +83,10 @@ class ContFrac(basic_algo.PiBasicAlgo):
         # TODO: and take it out as a factor (add p_gcd, q_gcd params)
         new_vec_p = (sum([l*m for l,m in zip(diff_vec_p, diff_mats_p)]), diff_vec_p[0])
         new_vec_q = (sum([l*m for l,m in zip(diff_vec_q, diff_mats_q)]), diff_vec_q[0])
+        if dec('inf') in new_vec_p:
+            raise ValueError('infinity p')
+        if dec('inf') in new_vec_q:
+            raise ValueError('infinity q')
 
         # new_vec_p is a list of vectors, which fit for dp_i/dx_j. The first element in each vector is p_n
         # Because it will be the same p_n for each dp_i/dx_j (only the derivatives change), we take arbitrarily

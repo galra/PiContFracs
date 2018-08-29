@@ -3,6 +3,7 @@ from functools import wraps
 from basic_algo import set_precision
 import cont_fracs
 from decimal import Decimal as dec
+from scipy.special import binom
 
 
 def _len_decorator(func):
@@ -81,29 +82,33 @@ range_a/range_b - should be of the format [first, last+1].
         # self.time_measure = 0
         cont_frac = cont_fracs.ContFrac([0 for i in range_a], [0 for i in range_b])
         a_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in ra ]) for ra in range_a ])
-        for pas in a_params_iterator:
-            b_params_iterator = itertools.product(*[itertools.product(*[ range(*r) for r in rb ]) for rb in range_b ])
-            for pbs in b_params_iterator:
-                for pb in pbs:
-                    if self._avoid_int_roots and self._does_have_integer_roots(pb):
-                        continue
-                if len(pas) > 1 and all([ pas[0] == p for p in pas ]):
-                    pas = (pas[0],)
-                if len(pbs) > 1 and all([ pbs[0] == p for p in pbs ]):
-                    pbs = (pbs[0],)
-                if len(pas) == 1 and len(pbs) == 1 and self._enum_only_exp_conv and \
-                   self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
-                    continue
-                if self._should_gen_contfrac:
-                    cont_frac.reinitialize(pas, pbs)
-                    if self._avoid_zero_b:
-                        try:
-                            cont_frac.gen_iterations(self.num_of_iterations)
-                        except cont_fracs.ZeroB:
+        for pas_premanipulate in a_params_iterator:
+            pas_gen = self.manipulate_poly(pas_premanipulate)
+            for pas in pas_gen:
+                b_params_iterator = itertools.product(*[itertools.product(*[ range(*r) for r in rb ]) for rb in range_b ])
+                for pbs_premanipulate in b_params_iterator:
+                    pbs_gen = self.manipulate_poly(pbs_premanipulate)
+                    for pbs in pbs_gen:
+                        for pb in pbs:
+                            if self._avoid_int_roots and self._does_have_integer_roots(pb):
+                                continue
+                        if len(pas) > 1 and all([ pas[0] == p for p in pas ]):
+                            pas = (pas[0],)
+                        if len(pbs) > 1 and all([ pbs[0] == p for p in pbs ]):
+                            pbs = (pbs[0],)
+                        if len(pas) == 1 and len(pbs) == 1 and self._enum_only_exp_conv and \
+                           self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
                             continue
-                    yield (cont_frac, pas, pbs)
-                else:
-                    yield(pas, pbs)
+                        if self._should_gen_contfrac:
+                            cont_frac.reinitialize(pas, pbs)
+                            if self._avoid_zero_b:
+                                try:
+                                    cont_frac.gen_iterations(self.num_of_iterations)
+                                except cont_fracs.ZeroB:
+                                    continue
+                            yield (cont_frac, pas, pbs)
+                        else:
+                            yield(pas, pbs)
 
     @staticmethod
     def _does_have_integer_roots(poly):
@@ -149,3 +154,32 @@ range_a/range_b - should be of the format [first, last+1].
             iter_num += 1
         if show_progress:
             print('')
+
+    @staticmethod
+    def manipulate_poly(poly):
+        yield poly
+
+
+class IndexedParameterEnumPolyParams(BasicEnumPolyParams):
+    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
+                 enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
+                 threshold=None, prec=100):
+        super().__init__(a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
+                         enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
+                         threshold=None, prec=100)
+
+    @staticmethod
+    def manipulate_poly(poly):
+        poly_new = []
+        for p in poly:
+            p_new = [ 0 ] * len(p)
+            deg_p = len(p)-1
+            # p_new += sum_i (x+i)**deg_p
+            for i, a_i in enumerate(p):
+                if a_i == 0:
+                    continue
+                # p_new += (x+i)**deg_p
+                for j in range(deg_p+1):
+                    p_new[j] += a_i * int(binom(deg_p, j)) * i**j
+            poly_new.append(p_new)
+        yield poly_new

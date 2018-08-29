@@ -1,5 +1,6 @@
 from decimal import Decimal as dec
 
+# TODO: might be possible to enhance efficiency by using dec.quantize to round to the required
 class DecimalHashTable(dict):
     def __init__(self, accuracy):
         # +1 for the decimal point
