@@ -11,6 +11,7 @@ class Parameters:
 
 
 def main(split_num=4, configfile='config.ini'):
+    print(split_num)
     if not math.log(split_num, 2).is_integer():
         raise ValueError('Only split numbers of a power of 2 are allowed (2, 4, 8, ...)')
     split_num = int(math.log(split_num, 2))
@@ -77,8 +78,8 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         main()
     elif len(sys.argv) == 2:
-        main(sys.argv[1])
-    elif len(sys.argv) == 3
-        main(sys.argv[1], sys.argv[2])
+        main(int(sys.argv[1]))
+    elif len(sys.argv) == 3:
+        main(int(sys.argv[1]), sys.argv[2])
     else:
         print('%s [split_num] [config_file]' % sys.argv[0])
