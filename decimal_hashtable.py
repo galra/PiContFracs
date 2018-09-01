@@ -57,3 +57,26 @@ class DecimalHashTable(dict):
 
     def __reduce__(self):
         return (DecimalHashTable, (self.accuracy,), self.__getstate__())
+
+    def append_dict(self, appended_dict):
+        if self.accuracy != appended_dict.accuracy:
+            raise TypeError('Two dictionaries are of non-fitting accuracies')
+
+        self.accuracy_history += [ a for a in appended_dict.accuracy_history if a not in self.accuracy_history ]
+        for k in super(DecimalHashTable, appended_dict).keys():
+            if k in super().keys():
+                try:
+                    orig_items = super().__getitem__(k)
+                    appended_items = super(DecimalHashTable, appended_dict).__getitem__(k)
+                    if not isinstance(orig_items, list):
+                        orig_items = [orig_items]
+                    if not isinstance(appended_items, list):
+                        appended_items = [appended_items]
+                    super().__setitem__(k, orig_items + appended_items)
+                except TypeError:
+                    type_orig = str(type(super().__getitem__(k)))
+                    type_appended = str(type(super(DecimalHashTable, appended_dict).__getitem__(k)))
+                    print('types are: original dict: %s, appended dict: %s' % (type_orig, type_appended))
+                    raise
+            else:
+                super().__setitem__(k, super(DecimalHashTable, appended_dict).__getitem__(k))

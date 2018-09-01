@@ -25,9 +25,9 @@ ENUMERATOR2TYPE = { v: k for k, v in ENUMERATOR_TYPES.items() }
 # do we still want to keep the default values here? (some of them require special imports that are not needed otherwise)
 class MITM:
     def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
-                 postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=6,
+                 postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=15,
                  ab_poly_class=BasicEnumPolyParams, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
-                 enum_only_exp_conv=True, num_of_iterations=100, threshold=None, prec=50):
+                 enum_only_exp_conv=True, num_of_iterations=300, threshold=None, prec=50):
         self.bep = ab_poly_class(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                                  num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
                                  avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
@@ -43,12 +43,14 @@ class MITM:
         self.filtered_params = []
 
     def redefine_settings(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
-                          trunc_integer=True, ab_poly_class=BasicEnumPolyParams, hashtable_prec = 6, prec=50):
+                          postproc_funcs_filter=[], trunc_integer=True, ab_poly_class=BasicEnumPolyParams,
+                          hashtable_prec = 6, prec=50):
         if not isinstance(self.bep, ab_poly_class):
             self.bep = ab_poly_class(prec=self.prec, enum_only_exp_conv=True, avoid_int_roots=True, should_gen_contfrac=True, num_of_iterations=100, threshold=None)
         self.target_generator = target_generator
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
+        self.postproc_funcs_filter = postproc_funcs_filter
         self.trunc_integer = trunc_integer
         self.hashtable_prec = hashtable_prec
         self.dec_hashtable.update_accuracy(self.hashtable_prec)
@@ -93,7 +95,6 @@ class MITM:
                     print('problematic number')
                     print(cur_cont_frac)
                 continue
-
             for post_func_ind, post_f in filtered_postproc_funcs:
                 # print(cur_cont_frac)
                 if post_func_ind not in self.postproc_funcs_filter:

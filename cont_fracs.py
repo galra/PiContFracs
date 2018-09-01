@@ -136,8 +136,8 @@ class ContFrac(basic_algo.PiBasicAlgo):
         a2p = ContFrac._array_to_polynom
         a_i = a2p(a_coeffs[i % len(a_coeffs)], divmod(i, len(a_coeffs))[0])
         b_i = a2p(b_coeffs[(i-1) % len(b_coeffs)], divmod(i, len(b_coeffs))[0])
-        if self._avoid_zero_b and b_i == 0:
-            raise ZeroB()
+        if self._avoid_zero_b and b_i == 0 and i > 0:
+            raise ZeroB(i)
         if self._check_b_threshold and b_i / self.gcd(a_i, b_i) > self._b_threshold:
             # raise self.SufficientAccuracy()
             pass

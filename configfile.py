@@ -86,7 +86,6 @@ class ConfigParser(configparser.ConfigParser):
             if not v:
                 v = 0
             v = int(v) + 1
-            print(v)
             filename = '%s_v%d.pkl' % (filename_base, v)
         else:
             filename = old_versions[-1]
@@ -135,6 +134,7 @@ CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        'a_interlace': int,
                        'b_interlace': int,
                        'print_surprising_nonexp_contfracs': ConfigParser.string_parameter_parser,
+                       'gen_hashtable_only': ConfigParser.string_parameter_parser,
                        # json is used to support interlace lists
                        'a_coeffs_range': json.loads,
                        'b_coeffs_range': json.loads,

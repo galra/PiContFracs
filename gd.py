@@ -25,7 +25,7 @@ class GradientDescentBasicAlgo:
         self.max_num_of_iterations = max_num_of_iterations
 
         # set decimal precision
-        basic_algo.set_precision(100)
+        basic_algo.set_precision(97)
 
     def find_params(self, a_coeffs, b_coeffs, show_progress=True):
         """Runs gradient-descent with the given parameters. step-size can be either dynamic of a number.

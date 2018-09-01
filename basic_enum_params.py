@@ -23,9 +23,9 @@ def _len_decorator(func):
 
 
 class BasicEnumPolyParams:
-    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
+    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
-                 threshold=None, prec=100):
+                 threshold=None, prec=80):
         self._a_poly_size = a_poly_size
         self._b_poly_size = b_poly_size
         self._num_of_a_polys = num_of_a_polys
@@ -161,12 +161,14 @@ range_a/range_b - should be of the format [first, last+1].
 
 
 class IndexedParameterEnumPolyParams(BasicEnumPolyParams):
-    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
+    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
-                 threshold=None, prec=100):
-        super().__init__(a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=100,
-                         enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
-                         threshold=None, prec=100)
+                 threshold=None, prec=80):
+        super().__init__(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
+                         num_of_b_polys=num_of_b_polys, num_of_iterations=num_of_iterations,
+                         enum_only_exp_conv=enum_only_exp_conv, avoid_int_roots=avoid_int_roots,
+                         should_gen_contfrac=should_gen_contfrac, avoid_zero_b=avoid_zero_b,
+                         threshold=threshold, prec=prec)
 
     @staticmethod
     def manipulate_poly(poly):

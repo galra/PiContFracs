@@ -14,9 +14,9 @@ import dill as pickle
 from latex import generate_latex
 import os
 from configfile import ConfigParser
-import configfile
+from configfile import CONFIG_PARAMS_TYPES as LEGAL_CONFIG_PARAMS
+import sys
 
-LEGAL_CONFIG_PARAMS = configfile.CONFIG_PARAMS_TYPES
 
 class MeasureRuntime():
     def __init__(self):
@@ -93,15 +93,18 @@ def main(configfile='config.ini'):
               (params.hashtable_file, str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
         if params.hashtable_file_operation == 'expand':
             mitm.redefine_settings(target_generator=target_generator, target_name=params.const,
-                                   postproc_funcs=EVALUATED_POSTPROC_FUNCS, ab_poly_class=params.ab_polys_type)
+                                   postproc_funcs=EVALUATED_POSTPROC_FUNCS,
+                                   postproc_funcs_filter=params.postproc_funcs_filter,
+                                   ab_poly_class=params.ab_polys_type)
             print('Updated mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     elif params.hashtable_file_operation == 'generate':
         mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const, a_poly_size=params.a_poly_size,
                                 b_poly_size=params.b_poly_size, num_of_a_polys=params.a_interlace, num_of_b_polys=params.b_interlace,
-                                postproc_funcs=EVALUATED_POSTPROC_FUNCS)
+                                postproc_funcs=EVALUATED_POSTPROC_FUNCS,
+                                postproc_funcs_filter=params.postproc_funcs_filter)
         print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     if params.hashtable_file_operation in ['expand', 'generate']:
-        # a,b polynoms coefficients will be enumerated in [-2,2]
+        # a, b polynoms coefficients will be enumerated in [-2,2]
         # one can either set enum_range to set a uniform boundary to all the coefficients,
         # or set a different range to the a's coefficients and b's coefficients.
         # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
@@ -116,6 +119,8 @@ def main(configfile='config.ini'):
             pickle.dump(mitm, output_file, protocol=pickle.HIGHEST_PROTOCOL)
         print('Stored hashtable as %s. Runtime: %s ' % (params.hashtable_file,
                                                         str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+    if params.gen_hashtable_only:
+        return
 
     # for finding clicks, we enumerate u,l,c,d: (u/pi+pi/l+c)*1/d
     # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
@@ -180,4 +185,7 @@ def main(configfile='config.ini'):
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        main()
