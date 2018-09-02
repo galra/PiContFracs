@@ -1,10 +1,12 @@
 import os
 import sys
+import time
 
 def main(configs_dir):
-    files_list = [ os.path.join(configs_dir, f) for f in os.listdir(configs_dir) if os.path.splitext(f)[1] == '.pkl' ]
+    files_list = [ os.path.join(configs_dir, f) for f in os.listdir(configs_dir) if os.path.splitext(f)[1] == '.ini' ]
     for f in files_list:
-        os.system('start cmd.exe /k python main.py %s' % f)
+        # os.system('start cmd.exe /k python main.py %s' % f)
+        os.system('start cmd.exe /k echo hi')
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
