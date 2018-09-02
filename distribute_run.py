@@ -38,6 +38,9 @@ def main(split_num=4, configfile='config.ini'):
                 results_config.set('Setup', config_variable, str(a_coeffs))
             elif config_variable == 'b_coeffs_range':
                 results_config.set('Setup', config_variable, str(b_coeffs))
+            elif config_variable == 'hashtable_file':
+                new_hashtable_file = ('_part%02d' % i).join(os.path.splitext(str(getattr(params, config_variable))))
+                results_config.set('Setup', config_variable, new_hashtable_file)
             else:
                 results_config.set('Setup', config_variable, str(getattr(params, config_variable)))
         results_config_filename = os.path.splitext(configfile)

@@ -1,6 +1,5 @@
 import os
 import sys
-import time
 
 def main(configs_dir):
     files_list = [ os.path.join(configs_dir, f) for f in os.listdir(configs_dir) if os.path.splitext(f)[1] == '.ini' ]
