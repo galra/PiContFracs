@@ -60,7 +60,8 @@ class ConfigParser(configparser.ConfigParser):
                 print('Error in _cast_param_val, configfile.py')
                 print(param_key)
                 print(param_val)
-                exit()
+                raise
+                # exit()
 
 
         return self._cast_unknown_param_val(param_val)
@@ -117,6 +118,14 @@ class ConfigParser(configparser.ConfigParser):
     def get_config(self):
         return self.config
 
+    def set(self, section, option, value=None):
+        if option == 'postproc_funcs_filter' and value:
+            funcs_list = json.loads(value)
+            funcs_names_list = [ '"%s"' % POSTPROC_FUNCS[i] for i in funcs_list ]
+
+            value = '[%s]' % (', '.join(funcs_names_list))
+        return super().set(section=section, option=option, value=value)
+
     @staticmethod
     def poly_type_parser(s):
         s = ConfigParser.string_parameter_parser(s)
@@ -145,5 +154,5 @@ CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        'hashtable_file_operation': ConfigParser.string_parameter_parser,
                        'hashtable_file': ConfigParser.string_parameter_parser}
 
-AB_POLYS_TYPES = {'normal': BasicEnumPolyParams,
-                  'indexed': IndexedParameterEnumPolyParams}
+AB_POLYS_TYPES = {str(BasicEnumPolyParams): BasicEnumPolyParams,
+                  str(IndexedParameterEnumPolyParams): IndexedParameterEnumPolyParams}

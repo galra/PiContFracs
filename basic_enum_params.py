@@ -22,7 +22,15 @@ def _len_decorator(func):
     return wrapper
 
 
-class BasicEnumPolyParams:
+class NormalMetaClass(type):
+    def __str__(self):
+        return 'normal'
+
+class BasicEnumPolyParams(metaclass=NormalMetaClass):
+    # class __metaclass__(type):
+    #     def __str__(self):
+    #         return 'normal'
+    # __metaclass__ = __metaclass__
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80):
@@ -160,7 +168,16 @@ range_a/range_b - should be of the format [first, last+1].
         yield poly
 
 
-class IndexedParameterEnumPolyParams(BasicEnumPolyParams):
+class IndexedMetaClass(NormalMetaClass):
+    def __str__(self):
+        return 'indexed'
+
+
+class IndexedParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaClass):
+    class __metaclass__(type):
+        def __str__(self):
+            return 'indexed'
+
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80):
