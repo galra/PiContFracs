@@ -152,7 +152,9 @@ CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        'postproc_funcs_filter': json.loads,
                        'i': int,
                        'hashtable_file_operation': ConfigParser.string_parameter_parser,
-                       'hashtable_file': ConfigParser.string_parameter_parser}
+                       'hashtable_file': ConfigParser.string_parameter_parser
+                       'hashtable_num_of_iterations': int,
+                       'hashtable_precision': int}
 
 AB_POLYS_TYPES = {str(BasicEnumPolyParams): BasicEnumPolyParams,
                   str(IndexedParameterEnumPolyParams): IndexedParameterEnumPolyParams}
