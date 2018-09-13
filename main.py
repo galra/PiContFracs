@@ -101,7 +101,9 @@ def main(configfile='config.ini'):
         mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const, a_poly_size=params.a_poly_size,
                                 b_poly_size=params.b_poly_size, num_of_a_polys=params.a_interlace, num_of_b_polys=params.b_interlace,
                                 postproc_funcs=EVALUATED_POSTPROC_FUNCS,
-                                postproc_funcs_filter=params.postproc_funcs_filter)
+                                postproc_funcs_filter=params.postproc_funcs_filter,
+                                hashtable_prec=params.hashtable_precision,
+                                num_of_iterations=params.hashtable_num_of_iterations)
         print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     if params.hashtable_file_operation in ['expand', 'generate']:
         # a, b polynoms coefficients will be enumerated in [-2,2]
