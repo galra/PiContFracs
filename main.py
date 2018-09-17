@@ -128,9 +128,11 @@ def main(configfile='config.ini'):
     # here a range should e either an int (then the enumeration is over [-i,i]), or an iterable of any type
     # (e.g. list, range object etc.)
     mitm.find_clicks(params.lhs_type, params.lhs_params)
+    print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
+          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     mitm.delete_hashtable()
     mitm.filter_uniq_params()
-    print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
+    print('Finished filtering unique. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     mitm.filter_only_exp_convergence(params.print_surprising_nonexp_contfracs)
     print('Finished fast filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %

@@ -32,6 +32,7 @@ class MITM:
                                  num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
                                  avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                                  num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
+        set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
@@ -42,11 +43,13 @@ class MITM:
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
         self.filtered_params = []
 
+
     def redefine_settings(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
                           postproc_funcs_filter=[], trunc_integer=True, ab_poly_class=BasicEnumPolyParams,
                           hashtable_prec = 6, prec=50):
         if not isinstance(self.bep, ab_poly_class):
             self.bep = ab_poly_class(prec=self.prec, enum_only_exp_conv=True, avoid_int_roots=True, should_gen_contfrac=True, num_of_iterations=100, threshold=None)
+        set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
         self.postproc_funcs = postproc_funcs
@@ -56,7 +59,6 @@ class MITM:
         self.dec_hashtable.update_accuracy(self.hashtable_prec)
         self.filtered_params = []
 
-        set_precision(prec)
 
     def build_hashtable(self, enum_range=None, range_a=None, range_b=None, prec=None):
         pg, pg_len = self.bep.polys_generator(enum_range=enum_range, range_a=range_a, range_b=range_b, prec=prec)
@@ -196,8 +198,11 @@ class MITM:
         self.filtered_params = refined_params
 
     def filter_uniq_params(self):
+        print('0%\r', end='')
+        progress_percentage = 0
+        filtered_params_len = len(self.filtered_params)
         non_equiv_params = []
-        for params in self.filtered_params:
+        for i, params in enumerate(self.filtered_params):
             is_unique = True
             for uniq_params in non_equiv_params:
                 uniq_lhs_res_obj= uniq_params[1]
@@ -206,6 +211,11 @@ class MITM:
                     break
             if is_unique:
                 non_equiv_params.append(params)
+            if int(100 * i / filtered_params_len) > progress_percentage:
+                progress_percentage = int(100 * i / filtered_params_len)
+                print('\r%2d%%, num. of filtered unique params: %d' % (progress_percentage, len(non_equiv_params)), end='')
+                sys.stdout.flush()
+        print('')
         self.filtered_params = non_equiv_params
 
     def filter_integer_roots_numerators(self):
