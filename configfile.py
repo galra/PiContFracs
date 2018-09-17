@@ -73,10 +73,11 @@ class ConfigParser(configparser.ConfigParser):
         if not filename:
             return
 
-        if not re.match('(.*?)(_v[0-9.]+)?(\\.pkl)', filename[:-len('.pkl')]):
+        if not re.match('(.*?)(_v[0-9]+)?(\\.pkl)', filename[:-len('.pkl')]):
             filename = '%s_v1.pkl' % filename[:-len('.pkl')]
 
-        old_versions = [ fn for fn in os.listdir() if re.match('(%s)(_v[0-9.]+)?(\\.pkl)' % filename[:-len('.pkl')], fn) ]
+        stripped_filename = re.split('_v[0-9]+.pkl$', filename)[0]
+        old_versions = [ fn for fn in os.listdir() if re.match('(%s)(_v[0-9.]+)?(\\.pkl)' % stripped_filename, fn) ]
         old_versions.sort()
         if not old_versions:
             self.config['hashtable_file'] = filename
@@ -152,7 +153,7 @@ CONFIG_PARAMS_TYPES = {'poly_coeffs_range':  json.loads,
                        'postproc_funcs_filter': json.loads,
                        'i': int,
                        'hashtable_file_operation': ConfigParser.string_parameter_parser,
-                       'hashtable_file': ConfigParser.string_parameter_parser
+                       'hashtable_file': ConfigParser.string_parameter_parser,
                        'hashtable_num_of_iterations': int,
                        'hashtable_precision': int}
 
