@@ -53,23 +53,26 @@ should calculate to get the desired precision. We calculate them to that precisi
 The code is made up of these files (some of the names aren't very indicative, as these are results of an ongoing
 process...):
 * main - this file is combining everything together, you should begin with it to understand more or less what's going on.
-    * configfile - loads and parses the configuration file
-    * latex - generates a latex file for the results
-    * gen_real_consts - this module holds all the constants we're dealing with (pi, e etc).
-    * enum_params - does all the enumeration. Creates the hashtable, then looking for LHS matches (AKA clicks)
-        * basic_enum_params - generates the parameters for the LHS and RHS which to be treated later as a polynomial
-          coefficients (usually).
-        * cont_fracs - generates continued fractions.
-            * basic_algo - a more basic class which the ContFrac inherits from, for the case we'll have other similar
-              objects for the RHS in the future. a "virtual class".
-        * decimal_hashtable - implements the customized hashtable for our purposes
-        * postprocfuncs - contains all the function that we apply on the continued fraction before saving the results to
-        * lhs_evaluators - the LHS function is a rational function? ulcd? Maybe we want something else? This file
-          implements these functions. As long as the interface is standard, any function can be implemented here and be
-          used (almost) natively by the rest of the code. "Almost" because the class type should be defined by name, and
-          added to the configfile to be supported and parsed correctly.
-      the hashtable
-    * You can ignore for now from: run_distributed_configs, join_hashtables, distribute_params. These are patchy (yet
-      working) approaches to distribution and parallelization.
-    * The rest of the fiels are mostly legacy and are likely to be oudated and not to support the current files formats
-      etc.
+* configfile - loads and parses the configuration file
+* latex - generates a latex file for the results
+* gen_real_consts - this module holds all the constants we're dealing with (pi, e etc).
+* enum_params - does all the enumeration. Creates the hashtable, then looking for LHS matches (AKA clicks)
+* basic_enum_params - generates the parameters for the LHS and RHS which to be treated later as a polynomial
+  coefficients (usually).
+* cont_fracs - generates continued fractions.
+    * basic_algo - a more basic class which the ContFrac inherits from, for the case we'll have other similar
+      objects for the RHS in the future. a "virtual class".
+* decimal_hashtable - implements the customized hashtable for our purposes
+* postprocfuncs - contains all the function that we apply on the continued fraction before saving the results to
+* lhs_evaluators - the LHS function is a rational function? ulcd? Maybe we want something else? This file
+  implements these functions. As long as the interface is standard, any function can be implemented here and be
+  used (almost) natively by the rest of the code. "Almost" because the class type should be defined by name, and
+  added to the configfile to be supported and parsed correctly.
+the hashtable
+
+### Other
+
+* You can ignore for now from: run_distributed_configs, join_hashtables, distribute_params. These are patchy (yet
+working) approaches to distribution and parallelization.
+* The rest of the fields are mostly legacy and are likely to be oudated and not to support the current files formats
+etc.
