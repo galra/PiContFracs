@@ -26,7 +26,7 @@ class NormalMetaClass(type):
     def __str__(self):
         return 'normal'
 
-class BasicEnumPolyParams(metaclass=NormalMetaClass):_
+class BasicEnumPolyParams(metaclass=NormalMetaClass):
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80):
@@ -201,8 +201,7 @@ class SparseMetaClass(NormalMetaClass):
     def __str__(self):
         return 'sparse'
 
-
-class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaClass):
+class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=SparseMetaClass):
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80, special_params=None):
@@ -214,13 +213,14 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaCl
                          should_gen_contfrac=should_gen_contfrac, avoid_zero_b=avoid_zero_b,
                          threshold=threshold, prec=prec)
 
-    def manipulate_poly(poly):
-        for poly_template in itertools.combinations(range(self.n), self.k):
-            yield self._apply_poly_template_on_coeffs_list(poly, )
-
     def _apply_poly_template_on_coeffs_list(self, coeffs_list, poly_template):
         if len(coeffs_list) > poly_template[-1]:
             print('Warning: coeffs_list=%s\npoly_template=%s' % (str(coeffs_list), str(poly_template)))
-        res_poly = [ 0 ] * poly_template[-1]
+        res_poly = [ 0 ] * (poly_template[-1] - 1)
         for i,v in zip(poly_template, coeffs_list):
-            res_poly[i] = v
+            res_poly[i-1] = v
+
+    def manipulate_poly(self, poly):
+        for poly_template in itertools.combinations(range(self.n), self.k):
+            yield self._apply_poly_template_on_coeffs_list(coeffs_list=poly, poly_template=poly_template)
+
