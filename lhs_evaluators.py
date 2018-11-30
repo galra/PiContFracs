@@ -5,8 +5,13 @@ import itertools
 from functools import reduce
 import operator
 import math
-from flint import fmpz_poly as poly
+# from flint import fmpz_poly as poly
+import sympy
 from postprocfuncs import POSTPROC_FUNCS
+
+x_sym = sympy.symbols('x')
+def poly(coeffs):
+    return sympy.poly('+'.join('%d*x**%d' % (c, i) for i, c in enumerate(coeffs)), x_sym)
 
 INVERSE_POSTPROC_PAIRS = [('safe_inverse', 'lambda x: x'),
                           ('lambda x: x**2', 'lambda x: safe_inverse(x**2)'),
@@ -183,6 +188,7 @@ class RationalFuncEvaluator(LHSEvaluator):
         # self.numerator = dec(str(self.numerator_p(self.target_constant))[2:-1])
         # self.denominator = dec(str(self.denominator_p(self.target_constant))[2:-1])
 
+
         if not self.denominator.is_normal() or not self.numerator.is_normal():
             self.val = dec('nan')
         else:
@@ -285,6 +291,7 @@ class RationalFuncEvaluator(LHSEvaluator):
         self.added_int += int(remainder[0])
         remainder[0] = 0
         # params[0] = numerator , params[1] = denominator
+        self.old_numerator_denominator_p = (self.numerator_p, self.denominator_p)
         self.numerator_p = quotient * denominator_p + remainder
         self.denominator_p = denominator_p
         self.update_params()
@@ -352,7 +359,7 @@ class RationalFuncEnumerator(LHSEnumerator):
                 continue
             numerator_p = poly(list(numerator_coeffs))
             sign_coeff = 1
-            if numerator_p[numerator_p.degree()] < 0:
+            if numerator_p.coeffs()[-1] < 0:
                 numerator_p *= -1
                 sign_coeff = -1
             denominator_iterator = itertools.product(*[ range(*c_range) for c_range in self._lhs_rational_denominator ])
@@ -388,6 +395,8 @@ class RationalFuncEnumerator(LHSEnumerator):
                 if (numerator_p.degree() < 2) and (denominator_p.degree() < 2):
                     continue
                 if func_params in generated_funcs:
+                    continue
+                if numerator_p.degree() == -1 or denominator_p.degree() == -1:
                     continue
                 generated_funcs.append(func_params)
                 yield RationalFuncEvaluator((numerator_p, denominator_p, 0), self.target_value)

@@ -26,11 +26,7 @@ class NormalMetaClass(type):
     def __str__(self):
         return 'normal'
 
-class BasicEnumPolyParams(metaclass=NormalMetaClass):
-    # class __metaclass__(type):
-    #     def __str__(self):
-    #         return 'normal'
-    # __metaclass__ = __metaclass__
+class BasicEnumPolyParams(metaclass=NormalMetaClass):_
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80):
@@ -76,7 +72,7 @@ class BasicEnumPolyParams(metaclass=NormalMetaClass):
         return range_a, range_b
 
     @_len_decorator
-    def polys_generator(self, enum_range=None, range_a=None, range_b=None, prec=None):
+    def polys_generator(self, enum_range=None, range_a=None, range_b=None, poly_template=None, prec=None):
         """enum_range - a number for the range [-enum_range, enum_range] or a specific range of the format [first, last+1].
 range_a/range_b - should be of the format [first, last+1].
     if two switching polynomials are used, this should be [[first1, last1+1], [first2, last2+1]]"""
@@ -90,6 +86,7 @@ range_a/range_b - should be of the format [first, last+1].
         # self.time_measure = 0
         cont_frac = cont_fracs.ContFrac([0 for i in range_a], [0 for i in range_b])
         a_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in ra ]) for ra in range_a ])
+
         for pas_premanipulate in a_params_iterator:
             pas_gen = self.manipulate_poly(pas_premanipulate)
             for pas in pas_gen:
@@ -174,13 +171,9 @@ class IndexedMetaClass(NormalMetaClass):
 
 
 class IndexedParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaClass):
-    class __metaclass__(type):
-        def __str__(self):
-            return 'indexed'
-
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
-                 threshold=None, prec=80):
+                 threshold=None, prec=80, special_params=None):
         super().__init__(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                          num_of_b_polys=num_of_b_polys, num_of_iterations=num_of_iterations,
                          enum_only_exp_conv=enum_only_exp_conv, avoid_int_roots=avoid_int_roots,
@@ -202,3 +195,32 @@ class IndexedParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaC
                     p_new[j] += a_i * int(binom(deg_p, j)) * i**j
             poly_new.append(p_new)
         yield poly_new
+
+
+class SparseMetaClass(NormalMetaClass):
+    def __str__(self):
+        return 'sparse'
+
+
+class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaClass):
+    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
+                 enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
+                 threshold=None, prec=80, special_params=None):
+        # for the calculation of the sparse polynom by "n over k" options
+        self.n, self.k = special_params
+        super().__init__(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
+                         num_of_b_polys=num_of_b_polys, num_of_iterations=num_of_iterations,
+                         enum_only_exp_conv=enum_only_exp_conv, avoid_int_roots=avoid_int_roots,
+                         should_gen_contfrac=should_gen_contfrac, avoid_zero_b=avoid_zero_b,
+                         threshold=threshold, prec=prec)
+
+    def manipulate_poly(poly):
+        for poly_template in itertools.combinations(range(self.n), self.k):
+            yield self._apply_poly_template_on_coeffs_list(poly, )
+
+    def _apply_poly_template_on_coeffs_list(self, coeffs_list, poly_template):
+        if len(coeffs_list) > poly_template[-1]:
+            print('Warning: coeffs_list=%s\npoly_template=%s' % (str(coeffs_list), str(poly_template)))
+        res_poly = [ 0 ] * poly_template[-1]
+        for i,v in zip(poly_template, coeffs_list):
+            res_poly[i] = v
