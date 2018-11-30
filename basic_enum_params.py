@@ -224,3 +224,5 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=SparseMetaCla
         for poly_template in itertools.combinations(range(self.n), self.k):
             yield self._apply_poly_template_on_coeffs_list(coeffs_list=poly, poly_template=poly_template)
 
+# apery a: 2 + n (2 + n) (4 + 3 n)
+# apery b: 2 n^5 (-1 + 2 n)
