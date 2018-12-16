@@ -207,6 +207,7 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaCl
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80, special_params=None):
         # for the calculation of the sparse polynom by "n over k" options
+        # comment comment
         self.n, self.k = special_params
         super().__init__(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                          num_of_b_polys=num_of_b_polys, num_of_iterations=num_of_iterations,
@@ -223,4 +224,4 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaCl
             print('Warning: coeffs_list=%s\npoly_template=%s' % (str(coeffs_list), str(poly_template)))
         res_poly = [ 0 ] * poly_template[-1]
         for i,v in zip(poly_template, coeffs_list):
-            res_poly[i] = v;
+            res_poly[i] = v
