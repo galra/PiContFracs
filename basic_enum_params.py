@@ -223,4 +223,4 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaCl
             print('Warning: coeffs_list=%s\npoly_template=%s' % (str(coeffs_list), str(poly_template)))
         res_poly = [ 0 ] * poly_template[-1]
         for i,v in zip(poly_template, coeffs_list):
-            res_poly[i] = v
+            res_poly[i] = v;
