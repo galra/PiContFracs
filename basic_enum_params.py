@@ -228,3 +228,7 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaCl
         res_poly = [ 0 ] * poly_template[-1]
         for i,v in zip(poly_template, coeffs_list):
             res_poly[i] = v
+
+
+# apery a: 2 + n (2 + n) (4 + 3 n)
+# apery b: 2 n^5 (-1 + 2 n)
