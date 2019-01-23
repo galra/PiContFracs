@@ -1,4 +1,4 @@
-import gen_real_consts
+import gen_consts
 import cont_fracs
 import csv
 import re
@@ -9,7 +9,7 @@ import math
 import matplotlib.pyplot as plt
 import scipy.stats
 import os
-from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation
+from gen_consts import gen_pi_const, gen_e_const, gen_feig_consts, gen_euler_masch_const, gen_percolation_consts
 import enum_params
 from postprocfuncs import EVALUATED_POSTPROC_FUNCS, POSTPROC_FUNCS
 from lhs_evaluators import ULCDEvaluator
@@ -24,11 +24,11 @@ def old_enum_csv_to_pdf(csv_path, constant=None):
     contfrac_params = []
     postproc_funcs = []
 
-    consts_generators = {'e': gen_real_e,
-                         'pi': gen_real_pi,
-                         'feig': gen_real_feig,
-                         'euler_masch': gen_real_euler_masch,
-                         'percolation': gen_real_percolation}
+    consts_generators = {'e': gen_e_const,
+                         'pi': gen_pi_const,
+                         'feig': gen_feig_consts,
+                         'euler_masch': gen_euler_masch_const,
+                         'percolation': gen_percolation_consts}
 
     if constant:
         if constant in consts_generators:
@@ -60,7 +60,8 @@ def old_enum_csv_to_pdf(csv_path, constant=None):
             constant_gen = consts_generators[constant]
     _, row = next(csv_iter)
 
-    mitm = enum_params.MITM(target_generator=constant_gen, target_name=constant, postproc_funcs=evaluated_postproc_funcs)
+    mitm = enum_params.MITM(target_generator=constant_gen, target_name=constant,
+                            postproc_funcs=evaluated_postproc_funcs)
     for i,row in enumerate(csvreader):
         a_params = json.loads(row[0].replace('(', '[').replace(',)', ']').replace(')', ']'))
         b_params = json.loads(row[1].replace('(', '[').replace(',)', ']').replace(')', ']'))
@@ -85,10 +86,10 @@ def old_enum_csv_to_pdf(csv_path, constant=None):
 #     contfrac_params = []
 #     postproc_funcs = []
 #
-#     consts_generators = {'e': gen_real_e,
-#                          'pi': gen_real_pi,
-#                          'feig': gen_real_feig,
-#                          'euler_masch': gen_real_euler_masch}
+#     consts_generators = {'e': gen_e_const,
+#                          'pi': gen_pi_const,
+#                          'feig': gen_feig_consts,
+#                          'euler_masch': gen_euler_masch_const}
 #
 #     if constant in consts_generators:
 #         constant = consts_generators[constant]()
@@ -149,9 +150,9 @@ def load_cont_fracs(csv_path):
             continue
         csv_target_x = row[3].strip().lower()
         if csv_target_x == 'pi':
-            target_x = gen_real_consts.gen_real_pi()
+            target_x = gen_consts.gen_pi_const()
         elif csv_target_x == 'e':
-            target_x = gen_real_consts.gen_real_e()
+            target_x = gen_consts.gen_e_const()
         elif re.match('^\\-?[0-9]+(\\.[0-9]+)?$', csv_target_x):
             target_x = dec(csv_target_x)
         else:

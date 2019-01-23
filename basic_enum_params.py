@@ -1,15 +1,21 @@
 import itertools
 from functools import wraps
-from basic_algo import set_precision
 import cont_fracs
 from decimal import Decimal as dec
+import decimal
 from scipy.special import binom
 
+def set_precision(prec):
+    """Sets the precision of the current decimal context"""
+    decimal.getcontext().prec=prec
 
 def _len_decorator(func):
+    """Used as a decorator to estimated the length of a generator with signature:
+    gen(range_a, range_b, prec)
+    Instead of returning a new generator 'gen',
+    the tuple (gen, estimated_len(gen)) is returned."""
     @wraps(func)
-    def wrapper(self, enum_range=None, range_a=None, range_b=None, prec=None):
-        range_a, range_b = self._convert_ranges_to_range_a_range_b(enum_range, range_a, range_b)
+    def wrapper(self, range_a=None, range_b=None, prec=None):
         gen_len = 1
         for ar in range_a:
             for r in ar:
@@ -23,17 +29,34 @@ def _len_decorator(func):
 
 
 class NormalMetaClass(type):
+    """Provides the value of str(BasicEnumPolyParams) => 'normal'"""
     def __str__(self):
         return 'normal'
 
-class BasicEnumPolyParams(metaclass=NormalMetaClass):_
-    def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
-                 enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
-                 threshold=None, prec=80):
-        self._a_poly_size = a_poly_size
-        self._b_poly_size = b_poly_size
-        self._num_of_a_polys = num_of_a_polys
-        self._num_of_b_polys = num_of_b_polys
+
+class BasicEnumPolyParams(metaclass=NormalMetaClass):
+    """Enumerates over a,b polynomials for continued fractions generation. The generated polynomials are taken as is,
+    unlike the non-basic enum poly params.
+    Other classes may inherit from this one and implement the static method manipulate_poly as a generator, to generate
+    from each "regular polynom" the required polynomials (or yield a single transformed polynomial)."""
+    def __init__(self, num_of_iterations=300, enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True,
+                 avoid_zero_b=True, threshold=None, prec=80):
+        """
+        init
+        :param self: self
+        :param num_of_iterations: if should_gen_contfrac=True, then how many iterations should be promoted.
+        :param enum_only_exp_conv: skip contfracs that surely won't converge (at least) exponentially
+        :param avoid_int_roots: avoid contfracs for which b (or any of its interlaces) have an integer root.
+                                it will affect only b polynomial of degree<=3.
+                                notice that if interlace is used, this may skip valid contfracs (the i root value may be
+                                assigned to another interlace polynomial instead of the one with the root).
+        :param should_gen_contfrac: generate ContFrac object and return (cont_frac, pas, pbs) instead of (pas, pbs)
+        :param avoid_zero_b: raise exception ZeroB and cancel if finite contfrac (b_i=0 for some i) is achieved
+        :param threshold: threshold for considering contfrac_res == target_val
+                          if abs(contfrac_res-target_val) < threshold.
+        :param prec: decimal precision to be used for calculations
+        :return: nothing
+        """
         self.num_of_iterations = num_of_iterations
         self._enum_only_exp_conv = enum_only_exp_conv
         self._avoid_int_roots = avoid_int_roots
@@ -53,70 +76,48 @@ class BasicEnumPolyParams(metaclass=NormalMetaClass):_
     def reinitialize_good_params(self):
         self.good_params = []
 
-    def _convert_ranges_to_range_a_range_b(self, enum_range, range_a, range_b):
-        if not (enum_range or range_a or range_b):
-            raise ValueError("No range was given")
-        if isinstance(enum_range, list):
-            if not range_a:
-                # range_a = [enum_range for i in range(self.a_poly_size) ]
-                range_a = [[enum_range] * self._a_poly_size] * self._num_of_a_polys
-            if not range_b:
-                # range_b = [enum_range for i in range(self.b_poly_size) ]
-                range_b = [[enum_range] * self._b_poly_size] * self._num_of_b_polys
-        elif enum_range:
-            if not range_a:
-                range_a = [ [[-enum_range, enum_range+1] for i in range(self._a_poly_size)] ] * self._num_of_a_polys
-            if not range_b:
-                range_b = [ [[-enum_range, enum_range+1] for i in range(self._b_poly_size)] ] * self._num_of_b_polys
-
-        return range_a, range_b
-
     @_len_decorator
-    def polys_generator(self, enum_range=None, range_a=None, range_b=None, poly_template=None, prec=None):
-        """enum_range - a number for the range [-enum_range, enum_range] or a specific range of the format [first, last+1].
-range_a/range_b - should be of the format [first, last+1].
-    if two switching polynomials are used, this should be [[first1, last1+1], [first2, last2+1]]"""
-        range_a, range_b = self._convert_ranges_to_range_a_range_b(enum_range, range_a, range_b)
-        # else:
-        #     if self._num_of_a_polys == 1:
-        #         range_a = [range_a]
-        #     if self._num_of_b_polys == 1:
-        #         range_b = [range_b]
-
-        # self.time_measure = 0
-        cont_frac = cont_fracs.ContFrac([0 for i in range_a], [0 for i in range_b])
+    def polys_generator(self, range_a=None, range_b=None):
+        """range_a/range_b - for example: [ [[], []], [[], [], []], [[], [], [], []], [[], []] ] is a 4-interlace with
+                             degrees of 2,3,4,2 . [m n] means running on coefficients between m to n-1."""
+        cont_frac = cont_fracs.ContFrac([0]*range_a, [0]*range_b, avoid_zero_b=self._avoid_zero_b)
         a_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in ra ]) for ra in range_a ])
 
         for pas_premanipulate in a_params_iterator:
-            pas_gen = self.manipulate_poly(pas_premanipulate)
-            for pas in pas_gen:
+            pas_manipulated_gen = self.manipulate_poly(pas_premanipulate)
+            for pas in pas_manipulated_gen:
                 b_params_iterator = itertools.product(*[itertools.product(*[ range(*r) for r in rb ]) for rb in range_b ])
                 for pbs_premanipulate in b_params_iterator:
-                    pbs_gen = self.manipulate_poly(pbs_premanipulate)
-                    for pbs in pbs_gen:
+                    pbs_manipulated_gen = self.manipulate_poly(pbs_premanipulate)
+                    for pbs in pbs_manipulated_gen:
                         for pb in pbs:
                             if self._avoid_int_roots and self._does_have_integer_roots(pb):
                                 continue
+                        # in the case of an interlace in which all the interlace-polynomials are identical,
+                        # squeeze it to a single polynomial with no interlace
                         if len(pas) > 1 and all([ pas[0] == p for p in pas ]):
                             pas = (pas[0],)
                         if len(pbs) > 1 and all([ pbs[0] == p for p in pbs ]):
                             pbs = (pbs[0],)
+                        # if no interlace and only exponential convergence contfracs should be enumerated, make sure
+                        # that 2*deg(a) >= deg(b)
                         if len(pas) == 1 and len(pbs) == 1 and self._enum_only_exp_conv and \
                            self._polynom_degree(pbs[0]) > 2 * self._polynom_degree(pas[0]):
                             continue
+                        # generate contfrac and return everything / return the polynomials
                         if self._should_gen_contfrac:
                             cont_frac.reinitialize(pas, pbs)
-                            if self._avoid_zero_b:
-                                try:
-                                    cont_frac.gen_iterations(self.num_of_iterations)
-                                except cont_fracs.ZeroB:
-                                    continue
+                            try:
+                                cont_frac.gen_iterations(self.num_of_iterations)
+                            except cont_fracs.ZeroB:
+                                continue
                             yield (cont_frac, pas, pbs)
                         else:
                             yield(pas, pbs)
 
     @staticmethod
     def _does_have_integer_roots(poly):
+        """For a poly of deg(poly)<=3, check if it has integer roots. Returns a boolean."""
         mask = [ i for i,e in enumerate(poly) if e != 0 ]
         if len(mask) == 0:
             return True
@@ -141,6 +142,7 @@ range_a/range_b - should be of the format [first, last+1].
 
     @staticmethod
     def _polynom_degree(p):
+        """Finds deg(p). It may be different than len(p). E.g. deg([1, 1, 0, 0]) is 1 and not 3."""
         deg = len(p)
         for i in p[::-1]:
             if i != 0:
@@ -166,6 +168,7 @@ range_a/range_b - should be of the format [first, last+1].
 
 
 class IndexedMetaClass(NormalMetaClass):
+    """Provides the value of str(IndexedParameterEnumPolyParams) => 'indexed'"""
     def __str__(self):
         return 'indexed'
 
@@ -198,6 +201,7 @@ class IndexedParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaC
 
 
 class SparseMetaClass(NormalMetaClass):
+    """Provides the value of str(SparseParameterEnumPolyParams) => 'sparse'"""
     def __str__(self):
         return 'sparse'
 
@@ -207,7 +211,6 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaCl
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80, special_params=None):
         # for the calculation of the sparse polynom by "n over k" options
-        # comment comment comment comment comment comment
         self.n, self.k = special_params
         super().__init__(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
                          num_of_b_polys=num_of_b_polys, num_of_iterations=num_of_iterations,

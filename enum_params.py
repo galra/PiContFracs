@@ -1,18 +1,16 @@
 import cont_fracs
 from decimal_hashtable import DecimalHashTable
 from decimal import Decimal as dec
-from gen_real_consts import gen_real_pi
+from gen_consts import gen_pi_const
 import csv
 import sys
-import time
 from latex import latex_cont_frac
 from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
 from postprocfuncs import POSTPROC_FUNCS ,POSTPROC_FUNCS_LATEX
-from basic_enum_params import BasicEnumPolyParams
+from basic_enum_params import BasicEnumPolyParams, set_precision
 import io
 import shutil
 import numpy
-from basic_algo import set_precision
 
 ENUMERATOR_TYPES = {'ulcd': ULCDEnumerator,
                     'rationalfunc': RationalFuncEnumerator}
@@ -24,14 +22,14 @@ ENUMERATOR2TYPE = { v: k for k, v in ENUMERATOR_TYPES.items() }
 
 # do we still want to keep the default values here? (some of them require special imports that are not needed otherwise)
 class MITM:
-    def __init__(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
-                 postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=15,
-                 ab_poly_class=BasicEnumPolyParams, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1,
+    def __init__(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs=[lambda x: x],
+                 postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=15, ab_poly_class=BasicEnumPolyParams,
                  enum_only_exp_conv=True, num_of_iterations=300, threshold=None, prec=50):
-        self.bep = ab_poly_class(a_poly_size=a_poly_size, b_poly_size=b_poly_size, num_of_a_polys=num_of_a_polys,
-                                 num_of_b_polys=num_of_b_polys, enum_only_exp_conv=enum_only_exp_conv,
-                                 avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
-                                 num_of_iterations=num_of_iterations, threshold=threshold, prec=prec)
+        # rhs_polys_enumer = Basic Enum Params
+        self.rhs_polys_enumer = ab_poly_class(num_of_iterations=num_of_iterations,
+                                              enum_only_exp_conv=enum_only_exp_conv, avoid_int_roots=True,
+                                              should_gen_contfrac=True, avoid_zero_b=True,
+                                              threshold=threshold, prec=prec)
         set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
@@ -44,11 +42,12 @@ class MITM:
         self.filtered_params = []
 
 
-    def redefine_settings(self, target_generator=gen_real_pi, target_name='pi', postproc_funcs=[lambda x:x],
+    def redefine_settings(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs=[lambda x:x],
                           postproc_funcs_filter=[], trunc_integer=True, ab_poly_class=BasicEnumPolyParams,
                           hashtable_prec = 6, prec=50):
-        if not isinstance(self.bep, ab_poly_class):
-            self.bep = ab_poly_class(prec=self.prec, enum_only_exp_conv=True, avoid_int_roots=True, should_gen_contfrac=True, num_of_iterations=100, threshold=None)
+        if not isinstance(self.rhs_polys_enumer, ab_poly_class):
+            self.rhs_polys_enumer = ab_poly_class(prec=self.prec, enum_only_exp_conv=True, avoid_int_roots=True,
+                                                  should_gen_contfrac=True, num_of_iterations=100, threshold=None)
         set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
@@ -60,8 +59,8 @@ class MITM:
         self.filtered_params = []
 
 
-    def build_hashtable(self, enum_range=None, range_a=None, range_b=None, prec=None):
-        pg, pg_len = self.bep.polys_generator(enum_range=enum_range, range_a=range_a, range_b=range_b, prec=prec)
+    def build_hashtable(self, range_a=None, range_b=None, prec=None):
+        pg, pg_len = self.rhs_polys_enumer.polys_generator(range_a=range_a, range_b=range_b, prec=prec)
         self._iter2hashtalbe(pg, pg_len)
 
     def _iter2hashtalbe(self, itr, itr_len, print_problematic=False):
@@ -80,16 +79,6 @@ class MITM:
             cur_cont_frac = cont_frac.get_result()
             if not cur_cont_frac.is_normal():
                 continue
-            # #I got trouble when having super large numbers coming going into the sin calc
-            # if print_problematic and abs(cur_cont_frac > dec('1E+50')):
-            #     print('problematic number')
-            #     print(cur_cont_frac)
-            #     continue
-            # # I got trouble when having super small numbers because we use inverse and then they get large and go into the sin calc
-            # if print_problematic and abs(cur_cont_frac) < dec('1E-50'):
-            #     print('problematic number')
-            #     print(cur_cont_frac)
-            #     continue
 
             # this tries to replace the previous 'problematic number' check, it haven't been tested yet
             if not cur_cont_frac.is_normal():
@@ -118,14 +107,6 @@ class MITM:
         print()
 
     def find_clicks(self, lhs_type, lhs_enumerator_params):
-        # if isinstance(u_range, int):
-        #     u_range = range(-u_range, u_range+1)
-        # if isinstance(l_range, int):
-        #     l_range = range(-l_range, l_range+1)
-        # if isinstance(c_range, int):
-        #     c_range = range(-c_range, c_range+1)
-        # if isinstance(d_range, int):
-        #     d_range = range(1, d_range+1)
         filtered_params = []
         progress_percentage=0
         print('0%', end='')
@@ -213,7 +194,8 @@ class MITM:
                 non_equiv_params.append(params)
             if int(100 * i / filtered_params_len) > progress_percentage:
                 progress_percentage = int(100 * i / filtered_params_len)
-                print('\r%2d%%, num. of filtered unique params: %d' % (progress_percentage, len(non_equiv_params)), end='')
+                print('\r%2d%%, num. of filtered unique params: %d' % (progress_percentage, len(non_equiv_params)),
+                      end='')
                 sys.stdout.flush()
         print('')
         self.filtered_params = non_equiv_params
@@ -258,7 +240,7 @@ class MITM:
         print('')
         self.filtered_params = filtered_params_list
 
-    def filter_clicks_by_approach_type(self, whitelist=['exp', 'over_exp', 'fast'], blacklist=None):    # , filter_uniq_list=True):
+    def filter_clicks_by_approach_type(self, whitelist=['exp', 'super_exp', 'fast'], blacklist=None):     # , filter_uniq_list=True):
         if not any([whitelist, blacklist]):
             raise ValueError('One is required: whitelist, blacklist')
         if whitelist and blacklist:
@@ -372,7 +354,7 @@ class MITM:
         pa, pb = ab
         cont_frac = cont_fracs.ContFrac(a_coeffs=pa, b_coeffs=pb)
         cont_frac.gen_iterations(iterations)
-        return (cont_frac, self.postproc_funcs[post_func_ind](cont_frac.get_result()), lhs_res_obj)
+        return cont_frac, self.postproc_funcs[post_func_ind](cont_frac.get_result()), lhs_res_obj
 
     @staticmethod
     def compare_dec_with_accuracy(d1, d2, accuracy):

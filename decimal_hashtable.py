@@ -1,23 +1,28 @@
 from decimal import Decimal as dec
 
-# TODO: might be possible to enhance efficiency by using dec.quantize to round to the required
+# TODO: might be possible to enhance efficiency by using dec.quantize to round to the required accuracy
 class DecimalHashTable(dict):
+    """Hashtable with decimal keys. Supports an arbitrary and varying precision for the keys."""
     def __init__(self, accuracy):
+        """accuracy - the required keys accuracy (how many digits should be compared)."""
         # +1 for the decimal point
         self.accuracy = accuracy + 1
         self.accuracy_history = []
 
     def update_accuracy(self, accuracy):
+        """Update the used keys accuracy for new saved values."""
         self.accuracy_history.append(self.accuracy)
         self.accuracy = accuracy + 1
 
     def _manipulate_key(self, key):
+        """Converts the key to a string of the appropriate length, to be used as a key."""
         if not isinstance(key, dec) and not isinstance(key, str):
             raise TypeError('Only Decimal is supported')
         if isinstance(key, str):
             key_str = key
         else:
             key_str = key.to_eng_string()
+        # returns the appropriates keys for any accuracy used so far, by a chronological order
         return [ key_str[:i+1] for i in self.accuracy_history ], (key_str[:self.accuracy+1])
 
     def __setitem__(self, key, value):
@@ -49,16 +54,20 @@ class DecimalHashTable(dict):
         return super().__contains__(cur_key)
 
     def __getstate__(self):
+        """Used by pickle for serializing."""
         return (self.accuracy, self.accuracy_history, dict(self))
 
     def __setstate__(self, state):
+        """Used by pickle for de-serializing."""
         self.accuracy, self.accuracy_history, data = state
         self.update(data)
 
     def __reduce__(self):
+        """Used by pickle for serializing (I think. Long time, no documentation)."""
         return (DecimalHashTable, (self.accuracy,), self.__getstate__())
 
     def append_dict(self, appended_dict):
+        """Enables appending another dict to this one. May be used to distribute run and join results."""
         if self.accuracy != appended_dict.accuracy:
             raise TypeError('Two dictionaries are of non-fitting accuracies')
 

@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-# TODO: check for integer roots for p \in Z_3,4[x]
-# TODO: fix the convergence params (usecase: the e contfracs: 'results_5303_050418.csv'
-# this is a temporary execution file
 import enum_params
-from decimal import Decimal as dec
 import time
 import datetime
-from gen_real_consts import gen_real_pi, gen_real_e, gen_real_feig, gen_real_euler_masch, gen_real_percolation, \
-                            gen_real_zeta
+from gen_consts import gen_pi_const, gen_e_const, gen_feig_consts, gen_euler_masch_const, gen_percolation_consts, \
+                            gen_zeta_consts
 from postprocfuncs import POSTPROC_FUNCS, EVALUATED_POSTPROC_FUNCS
 import dill as pickle
 from latex import generate_latex
@@ -19,7 +15,16 @@ import sys
 import pdb
 
 
+
 class MeasureRuntime():
+    """"Stopper" class for timing execution. Example:
+    m = MeasureRuntime()
+    m.start(measure)
+    # <code_to_measure1>
+    run_time1 = m.measure_time()
+    # <code_to_measure2>
+    run_time2 = m.measure_time()"""
+
     def __init__(self):
         self.times = []
 
@@ -32,6 +37,7 @@ class MeasureRuntime():
 
 
 class Parameters:
+    """Stub class for parameters, parsed parameters can be defined as instance's members."""
     pass
 
 # example - this is the standard continuous fraction with sixes. it works.
@@ -42,19 +48,15 @@ class Parameters:
 # print(mitm.filtered_params)
 
 # example - this is for testing a specific set of parameters
-# bep = enum_params.BasicEnumPolyParams()
-# bep.polys_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
-
-# example - this is for interlace
-# main(a_coeffs_range=[[[2, 3]], [[5, 6]]], b_coeffs_range=[[[1, 2]], [[-9, -7]], [[1,2]]], a_interlace=2, b_interlace=3)
-
-# default is a,b in Z_2[x]
+# rhs_polys_enumer = enum_params.BasicEnumPolyParams()
+# rhs_polys_enumer.polys_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
 
 try:
     def main(configfile='config.ini'):
-        """supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1). for feig, i=0,1,2,3 is required.
-        for percolation, i=0,1 is required"""
-
+        """Supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1), zeta (2-20).
+        For feig, i=0,1,2,3 is required.
+        For percolation, i=0,1 is required.
+        For zeta, i=2,3,4,...,19,20 is required."""
         # Load configuration file
         params = Parameters()
         config_parser = ConfigParser(configfile=configfile)
@@ -65,14 +67,14 @@ try:
             setattr(params, config_variable, config[config_variable])
             print('%s is set up to %s ' % (config_variable, getattr(params, config_variable)))
 
-        gen_real_feig_const = lambda: gen_real_feig(params.i)
-        gen_real_percolation_const = lambda: gen_real_percolation(params.i)
-        gen_real_zeta_conts = lambda: gen_real_zeta(params.i)
+        gen_real_feig_const = lambda: gen_feig_consts(params.i)
+        gen_real_percolation_const = lambda: gen_percolation_consts(params.i)
+        gen_real_zeta_conts = lambda: gen_zeta_consts(params.i)
 
-        consts_generators = {'e': gen_real_e,
-                             'pi': gen_real_pi,
+        consts_generators = {'e': gen_e_const,
+                             'pi': gen_pi_const,
                              'feig': gen_real_feig_const,
-                             'euler_masch': gen_real_euler_masch,
+                             'euler_masch': gen_euler_masch_const,
                              'percolation': gen_real_percolation_const,
                              'zeta': gen_real_zeta_conts}
         if params.const in consts_generators:
@@ -100,13 +102,11 @@ try:
                                        ab_poly_class=params.ab_polys_type)
                 print('Updated mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
         elif params.hashtable_file_operation == 'generate':
-            mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const, a_poly_size=params.a_poly_size,
-                                    b_poly_size=params.b_poly_size, num_of_a_polys=params.a_interlace, num_of_b_polys=params.b_interlace,
+            mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const,
                                     postproc_funcs=EVALUATED_POSTPROC_FUNCS,
                                     postproc_funcs_filter=params.postproc_funcs_filter,
                                     hashtable_prec=params.hashtable_precision,
-                                    num_of_iterations=params.hashtable_num_of_iterations,
-                                    ab_poly_class=ab_polys_type)
+                                    num_of_iterations=params.hashtable_num_of_iterations)
             print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
         if params.hashtable_file_operation in ['expand', 'generate']:
             # a, b polynoms coefficients will be enumerated in [-2,2]
@@ -114,11 +114,10 @@ try:
             # or set a different range to the a's coefficients and b's coefficients.
             # the given value should be either int (then the range will be [-a,a], enumeration includes both edges), or a 2-elements tuple/list
             # of the form [a,b] where a<b. enumeration includes only lower edge (b isn't included)
-            mitm.build_hashtable(enum_range=params.poly_coeffs_range, range_a=params.a_coeffs_range, range_b=params.b_coeffs_range)
+            mitm.build_hashtable(range_a=params.a_coeffs_range, range_b=params.b_coeffs_range)
             print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+            # TODO: Any new parameters should be added and saved here?
             mitm.dec_hashtable['parameters'] = {'target_generator': target_generator, 'target_name': params.const,
-                                                'a_poly_size': params.a_poly_size, 'b_poly_size': params.b_poly_size,
-                                                'num_of_a_polys': params.a_interlace, 'num_of_b_polys': params.b_interlace,
                                                 'POSTPROC_FUNCS': EVALUATED_POSTPROC_FUNCS}
             with open(params.hashtable_file, 'wb') as output_file:
                 pickle.dump(mitm, output_file, protocol=pickle.HIGHEST_PROTOCOL)
@@ -140,7 +139,7 @@ try:
         mitm.filter_only_exp_convergence(params.print_surprising_nonexp_contfracs)
         print('Finished fast filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-        mitm.filter_clicks_by_approach_type(whitelist=['exp', 'over_exp'])
+        mitm.filter_clicks_by_approach_type(whitelist=['exp', 'super_exp'])
         print('Finished full filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
         mitm.refine_clicks(accuracy=10, num_of_iterations=300, print_clicks=False)
