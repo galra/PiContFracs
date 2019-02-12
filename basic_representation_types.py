@@ -1,3 +1,5 @@
+"""The most basic representation classes to be be inherited and further implemented by specific representation
+(e.g. Continued Fractions, Engel expression etc)."""
 import math
 
 
@@ -119,7 +121,7 @@ class BasicContFracAlgo(BasicRecursiveConstRepresenter):
 
     def gen_iterations(self, num_of_iters, accuracy=0, exec_finalize=True):
         """Resets the current state to 0 iterations and generates 'num_of_iters' iterations FROM SCRATCH.
-        If the approach type is evaluated and supported, and less then 'num_of_iters' interations are required to
+        If the approach type is evaluated and supported, and less then 'num_of_iters' iterations are required to
         achieve an error of at most 'accuracy', if 'accuracy' isn't 0.
         If 'exec_finalize' is True and self.finalize_iterations method exists, it is being invoked at the end."""
         # Calculates the required number of iterations if required, for fast convergence.

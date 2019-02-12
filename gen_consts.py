@@ -1,7 +1,8 @@
+"""Provides several constants with extremely high accuracy available.
+Check the functions 'gen_*_const(s)' to see what constants are available"""
+
 from decimal import Decimal as dec
 import decimal
-"""Make several constants with extremely high accuracy available.
-Check the functions 'gen_*_const(s)' to see what constants are available"""
 
 dc = decimal.getcontext()
 # probably taken from here: http://www.piday.org/million/

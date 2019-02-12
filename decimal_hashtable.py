@@ -1,6 +1,12 @@
+"""Implements a hashtable for Decimal values. This is barely an extension of the dict type to support Decimal with a
+ defined decimal accuracy as keys.
+ Some more features are supplied, such as dynamic accuracy (the stored keys' accuracy may be redefined), support for
+ serialization by dill/pickle and (perhaps) more."""
+
 from decimal import Decimal as dec
 
 # TODO: might be possible to enhance efficiency by using dec.quantize to round to the required accuracy
+# TODO: IMPORTANT! We're exposed to num. errs. A "rounding" func is needed. Here and in "compare_dec_with_accuracy".
 class DecimalHashTable(dict):
     """Hashtable with decimal keys. Supports an arbitrary and varying precision for the keys."""
     def __init__(self, accuracy):

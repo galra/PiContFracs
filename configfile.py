@@ -1,9 +1,13 @@
+"""Extends the configparser.ConfigParser class to support the specific configuration file needed for the exhaustion
+process."""
+
 import configparser
 import json
 import re
 import os
 from postprocfuncs import POSTPROC_FUNCS
-from basic_enum_params import BasicEnumPolyParams, IndexedParameterEnumPolyParams
+from basic_enum_poly_params import BasicEnumPolyParams, IndexedParameterEnumPolyParams
+from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
 
 
 class ConfigParser(configparser.ConfigParser):
@@ -38,8 +42,16 @@ class ConfigParser(configparser.ConfigParser):
         # convert the postproc functions to their indices
         self._gen_postproc_funcs_filter()
 
+        # assert that hashtable_file_operation has a legal value
         if self._config['hashtable_file_operation'] not in ['generate', 'expand', 'use']:
             raise ValueError('Illegal value for hashtable_file_operation')
+
+        # Deal with gen_hashtable_only=='auto' (convert to True/False according to hashtable_file_operation)
+        if self._config['gen_hashtable_only'] == 'auto':
+            if self._config['hashtable_file_operation'] == 'use':
+                self._config['gen_hashtable_only'] = False
+            else:
+                self._config['gen_hashtable_only'] = True
 
     def _cast_param_val(self, param_key, param_val):
         """Casts parameters to their proper value/type according to CONFIG_PARAMS_TYPES.
@@ -109,7 +121,7 @@ class ConfigParser(configparser.ConfigParser):
         elif s.lower() == 'true':
             return True
 
-        return s
+        return s.lower()
 
     @staticmethod
     def poly_type_parser(s):
@@ -118,6 +130,15 @@ class ConfigParser(configparser.ConfigParser):
         if s not in AB_POLYS_TYPES:
             raise ValueError('%s is not a valid type of a polynom' % s)
         return AB_POLYS_TYPES[s]
+
+    @staticmethod
+    def lhs_type_parser(s):
+        """Converts the lhs_type value to the appropriate classes for enumerator and evaluator, in a dictionary with
+        the keys: 'eval', 'enum'."""
+        s = ConfigParser.string_parameter_parser(s)
+        if s not in LHS_TYPES:
+            raise ValueError('%s is not a valid type for lhs' % s)
+        return LHS_TYPES[s]
 
     def _cast_unknown_param_val(self, s):
         """Cast a string to its optimal cast (int, float, list or still a string)."""
@@ -163,7 +184,7 @@ CONFIG_PARAMS_TYPES = {'const': ConfigParser.string_parameter_parser,
                        # json is used to support interlace lists
                        'a_coeffs_range': json.loads,
                        'b_coeffs_range': json.loads,
-                       'lhs_type': ConfigParser.string_parameter_parser,
+                       'lhs_type': ConfigParser.lhs_type_parser,
                        'lhs_params': json.loads,
                        'postproc_funcs_filter': json.loads,
                        'i': int,
@@ -175,3 +196,6 @@ CONFIG_PARAMS_TYPES = {'const': ConfigParser.string_parameter_parser,
 # defines the types of supported polynomials
 AB_POLYS_TYPES = {str(BasicEnumPolyParams): BasicEnumPolyParams,
                   str(IndexedParameterEnumPolyParams): IndexedParameterEnumPolyParams}
+# defines the types of supported lhs
+LHS_TYPES = {str(ULCDEnumerator): {'enum': ULCDEnumerator, 'eval': ULCDEvaluator},
+             str(RationalFuncEnumerator): {'enum': RationalFuncEnumerator, 'eval': RationalFuncEvaluator}}

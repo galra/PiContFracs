@@ -1,3 +1,5 @@
+"""Implementation of enumeration over different polynomials types, for the a, b polynomials of a continued fractions."""
+
 import itertools
 from functools import wraps
 import cont_fracs
@@ -15,7 +17,7 @@ def _len_decorator(func):
     Instead of returning a new generator 'gen',
     the tuple (gen, estimated_len(gen)) is returned."""
     @wraps(func)
-    def wrapper(self, range_a=None, range_b=None, prec=None):
+    def wrapper(self, range_a, range_b, prec=None):
         gen_len = 1
         for ar in range_a:
             for r in ar:
@@ -24,7 +26,7 @@ def _len_decorator(func):
             for r in br:
                 gen_len *= (r[1] - r[0])
 
-        return func(self, enum_range, range_a, range_b, prec), gen_len
+        return func(self, range_a, range_b, prec), gen_len
     return wrapper
 
 
@@ -71,25 +73,44 @@ class BasicEnumPolyParams(metaclass=NormalMetaClass):
         set_precision(prec)
 
     def reset_precision(self):
+        """Resets the used decimal precision to the predefined (during initialization) precision."""
         set_precision(self._prec)
 
     def reinitialize_good_params(self):
+        """Reinitializes the good parameters (the sets of a,b that were found and saved by the 'enum_params' method)."""
         self.good_params = []
 
     @_len_decorator
-    def polys_generator(self, range_a=None, range_b=None):
-        """range_a/range_b - for example: [ [[], []], [[], [], []], [[], [], [], []], [[], []] ] is a 4-interlace with
-                             degrees of 2,3,4,2 . [m n] means running on coefficients between m to n-1."""
-        cont_frac = cont_fracs.ContFrac([0]*range_a, [0]*range_b, avoid_zero_b=self._avoid_zero_b)
-        a_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in ra ]) for ra in range_a ])
+    def polys_generator(self, range_a, range_b, prec=None):
+        """Generates the polynomials from range_a and range_b.
+        Parameters:
+            range_a - for example: [ [[], []], [[], [], []], [[], [], [], []], [[], []] ] is a 4-interlace
+                      with degrees of 2,3,4,2 . [m n] means running on coefficients between m to n-1.
+            range_b - as range_a.
+            prec - ignored. Left for compatiblity with the _len_decorator decoration.
+        Returns:
+            yields pairs for (a_poly, b_poly), each of them is a list of polynomials (for interlace)."""
+        # Create an instance. To improve runtime, this method will be reinitialized over and over instead of creating.
+        # new instances every so often.
+        cont_frac = cont_fracs.ContFrac([1], [1], avoid_zero_b=self._avoid_zero_b)
+        # TODO: delete the following line. It left as a documentation backup until everything works.
+        # cont_frac = cont_fracs.ContFrac([1]*range_a, [0]*range_b, avoid_zero_b=self._avoid_zero_b)
 
+        # Catersian product of all the possibilities of a.
+        a_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in ra ]) for ra in range_a ])
         for pas_premanipulate in a_params_iterator:
+            # In more complex cases, manipulated versions of the a polynomial may be wished.
+            # Create a generator for this manipulated versions.
             pas_manipulated_gen = self.manipulate_poly(pas_premanipulate)
             for pas in pas_manipulated_gen:
-                b_params_iterator = itertools.product(*[itertools.product(*[ range(*r) for r in rb ]) for rb in range_b ])
+                # Cartesian product of b.
+                b_params_iterator = itertools.product(*[ itertools.product(*[ range(*r) for r in rb ])
+                                                         for rb in range_b ])
                 for pbs_premanipulate in b_params_iterator:
+                    # Manipulated versions for b.
                     pbs_manipulated_gen = self.manipulate_poly(pbs_premanipulate)
                     for pbs in pbs_manipulated_gen:
+                        # Check for integers roots of b polynomials and avoid if required.
                         for pb in pbs:
                             if self._avoid_int_roots and self._does_have_integer_roots(pb):
                                 continue
@@ -113,7 +134,7 @@ class BasicEnumPolyParams(metaclass=NormalMetaClass):
                                 continue
                             yield (cont_frac, pas, pbs)
                         else:
-                            yield(pas, pbs)
+                            yield (pas, pbs)
 
     @staticmethod
     def _does_have_integer_roots(poly):
@@ -150,11 +171,13 @@ class BasicEnumPolyParams(metaclass=NormalMetaClass):
             deg -= 1
         return deg
 
-    def enum_params(self, enum_range=None, range_a=None, range_b=None, show_progress=True):
-        params_iter = self.polys_generator(enum_range, range_a, range_b)
+    def enum_params(self, target_value, range_a=None, range_b=None, show_progress=True):
+        """This method haven't been tested in a while. May not work.
+        Iterates over polynomials and saves the parameters that (assumingly) converge to target_constant."""
+        params_iter = self.polys_generator(range_a, range_b)
         iter_num = 1
         for cont_frac, pa, pb in params_iter:
-            if cont_frac.is_result_valid() and cont_frac.compare_result() < self.threshold:
+            if cont_frac.is_result_valid() and cont_frac.compare_result(target_value) < self.threshold:
                     self.good_params.append({'a': pa, 'b': pb})
             if iter_num % 100 == 0 and show_progress:
                 print('\r%d' % (iter_num), end='')
@@ -174,6 +197,9 @@ class IndexedMetaClass(NormalMetaClass):
 
 
 class IndexedParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaClass):
+    """This class provides enumeration over polynomials of the pattern:
+        a_0*x^n + a_1*(x+1)^n + a_2*(x+2)^n + a_n*(x+n)^n
+     The input polynomial parameters are considered as a_0,...,a_n of the above pattern."""
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,
                  threshold=None, prec=80, special_params=None):
@@ -186,10 +212,12 @@ class IndexedParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaC
     @staticmethod
     def manipulate_poly(poly):
         poly_new = []
+        # run over the different interlace polynomials
         for p in poly:
             p_new = [ 0 ] * len(p)
             deg_p = len(p)-1
-            # p_new += sum_i (x+i)**deg_p
+            # p_new += sum_i a_i*(x+i)**deg_p
+            # for each a_i, calculate the the contribution of a_i*(x+i)^n to the coefficients of the expanded polynomial
             for i, a_i in enumerate(p):
                 if a_i == 0:
                     continue
@@ -206,6 +234,7 @@ class SparseMetaClass(NormalMetaClass):
         return 'sparse'
 
 
+# TODO: finish writing/documenting this class
 class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=IndexedMetaClass):
     def __init__(self, a_poly_size=3, b_poly_size=3, num_of_a_polys=1, num_of_b_polys=1, num_of_iterations=300,
                  enum_only_exp_conv=False, avoid_int_roots=True, should_gen_contfrac=True, avoid_zero_b=True,

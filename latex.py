@@ -1,8 +1,6 @@
-import numpy as np
-from pylatex import Document, Section, Math, Alignat
-import os
-
 """The following functions are used to generate a latex document and a rendered pdf."""
+
+from pylatex import Document, Section, Alignat
 
 def generate_latex(filename, eqns=[]):
     """Creates a latex document, with a title and the equations.

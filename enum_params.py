@@ -1,35 +1,73 @@
+"""Integrates most part and provides the main module: the one that implements meet-in-the-middle by exhausting the
+continued fractions and creating a result hashtable, exhausting the LHS (functions applied on the target constant) and
+finding 'clicks', filter unique ones and ones that converge fast enough and then refine the clicks to those that match
+with the continued fractions up to an arbitrary decimal precision."""
+
 import cont_fracs
 from decimal_hashtable import DecimalHashTable
 from decimal import Decimal as dec
 from gen_consts import gen_pi_const
 import csv
-import sys
 from latex import latex_cont_frac
-from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
 from postprocfuncs import POSTPROC_FUNCS ,POSTPROC_FUNCS_LATEX
-from basic_enum_params import BasicEnumPolyParams, set_precision
+from basic_enum_poly_params import BasicEnumPolyParams, set_precision
 import io
 import shutil
 import numpy
+# The usage of progressbar adds about 1:05 minutes for a 25 bits enumeration
+import progressbar
+import itertools
+from utils import MathOperations
 
-ENUMERATOR_TYPES = {'ulcd': ULCDEnumerator,
-                    'rationalfunc': RationalFuncEnumerator}
-EVALUATOR_TYPES = {'ulcd': ULCDEvaluator,
-                   'rationalfunc': RationalFuncEvaluator}
-
-EVALUATOR2TYPE = { v: k for k, v in EVALUATOR_TYPES.items() }
-ENUMERATOR2TYPE = { v: k for k, v in ENUMERATOR_TYPES.items() }
+# from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
+# converts #
+# ENUMEATOR_TYPES = {'ulcd': ULCDEnumerator,
+#                     'rationalfunc': RationalFuncEnumerator}
+# EVALUATOR_TYPES = {'ulcd': ULCDEvaluator,
+#                    'rationalfunc': RationalFuncEvaluator}
+#
+# EVALUATOR2TYPE = { v: k for k, v in EVALUATOR_TYPES.items() }
+# ENUMERRATOR2TYPE = { v: k for k, v in ENUMERATOR_TYPES.items() }
 
 # do we still want to keep the default values here? (some of them require special imports that are not needed otherwise)
 class MITM:
+    # TODO: right documentation. What does this class do?
     def __init__(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs=[lambda x: x],
                  postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=15, ab_poly_class=BasicEnumPolyParams,
-                 enum_only_exp_conv=True, num_of_iterations=300, threshold=None, prec=50):
-        # rhs_polys_enumer = Basic Enum Params
+                 enum_only_exp_conv=True, num_of_iterations=300, prec=50):
+        """target_generator - function that generates the target value.
+        target_name - the name of the target, used for exporting and displaying the results.
+        postproc_funcs - a list of functions that can be applied on the continued fraction results before saving to
+                         the hashtable.
+        postproc_funcs_filter - indices of functions from postproc_funcs to actually be applied on the resulting
+                                continued fractions. The reason for this structure is that it is easier to provide
+                                 backward compatibility and flexibility, as all the possible needed data (the postproc
+                                 functions in this case) is stored in the class.
+        trunc_integer - whether to ignore an integer difference when comparing to the target value. E.g. if
+                        contfrac_val=5.2348 and target_val=3.2348, it will be considered a match (or a "click").
+                        This is done in two different places - when generating the continued fractions, they're saved
+                        to the hashtable without an integer-value of 0 (0.xyzaba...). When enumerating the LHS and
+                        looking for clicks, they are truncated to fractional value too before being sought in the
+                        hashtable.
+        hashtable_prec - what decimal precision to be used in the hashtable (this includes ALL decimals, before and
+                         after the decimal point).
+        ab_poly_class - a class to be used for initializing the enumerator of the  a,b polynomials (of the continued
+                        fraction).
+        enum_only_exp_conv - whether to skip enumeration over non-exponential converging continued fractions.
+        num_of_iterations - number of iterations to produce when building the contfracs for generating the hashtable.
+                            This number is closely related to the hastable_prec value, as only contfracs that achieve
+                            'hashtable_prec' precision in 'num_of_iterations' iterations will be stored properly and
+                            may be later found.
+                            In future, if we could easily estimate the rate of convergence, this parameter should be
+                            replaced with an upper bound for iterations, and the required precision should be used to
+                            estimate the number of required iterations.
+        prec - the decimal precision to be used during calculations. This of course bounds all other used precisions."""
         self.rhs_polys_enumer = ab_poly_class(num_of_iterations=num_of_iterations,
                                               enum_only_exp_conv=enum_only_exp_conv, avoid_int_roots=True,
-                                              should_gen_contfrac=True, avoid_zero_b=True,
-                                              threshold=threshold, prec=prec)
+                                              should_gen_contfrac=True, avoid_zero_b=True, prec=prec)
+        self._polys_enumer_num_of_iterations = num_of_iterations
+        self._polys_enumer_enum_only_exp_conv = enum_only_exp_conv
+
         set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
@@ -41,13 +79,22 @@ class MITM:
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
         self.filtered_params = []
 
-
-    def redefine_settings(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs=[lambda x:x],
-                          postproc_funcs_filter=[], trunc_integer=True, ab_poly_class=BasicEnumPolyParams,
-                          hashtable_prec = 6, prec=50):
+    def redefine_settings(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs=[lambda x: x],
+                          postproc_funcs_filter=[], trunc_integer=True, hashtable_prec = 15,
+                          ab_poly_class=BasicEnumPolyParams, prec=50):
+        """Redefines the class's settings. See the help of '__init__' for more info.
+        Two important differences are:
+            1) The contfrac's a,b enumerator is recreated if ab_poly_class is changed to a
+               different one.
+            2) The hashtable precision is UPDATED, but the old hashtable IS NOT DELETED."""
+        # TODO: document the differences between __init__ and here (ab_poly_class? hashtable updated instead of recreated).
         if not isinstance(self.rhs_polys_enumer, ab_poly_class):
-            self.rhs_polys_enumer = ab_poly_class(prec=self.prec, enum_only_exp_conv=True, avoid_int_roots=True,
-                                                  should_gen_contfrac=True, num_of_iterations=100, threshold=None)
+            self.rhs_polys_enumer = ab_poly_class(prec=self.prec,
+                                                  enum_only_exp_conv=self._polys_enumer_enum_only_exp_conv,
+                                                  avoid_int_roots=True,
+                                                  should_gen_contfrac=True,
+                                                  num_of_iterations=self._polys_enumer_num_of_iterations,
+                                                  threshold=None)
         set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
@@ -59,39 +106,40 @@ class MITM:
         self.filtered_params = []
 
 
-    def build_hashtable(self, range_a=None, range_b=None, prec=None):
-        pg, pg_len = self.rhs_polys_enumer.polys_generator(range_a=range_a, range_b=range_b, prec=prec)
+    def build_hashtable(self, range_a, range_b):
+        """Build a hashtable using the ranges for a, b. See the help for BasicEnumPolyParams.polys_generator for how
+         range_a, range_b should be supplied.
+         For each result continued fraction all the selected postproc functions will be applied on, and these results
+         will be saved to the hashtable."""
+        # pg - polynomial generator. The pg_len is only an (over)estimated one.
+        pg, pg_len = self.rhs_polys_enumer.polys_generator(range_a=range_a, range_b=range_b)
         self._iter2hashtalbe(pg, pg_len)
 
     def _iter2hashtalbe(self, itr, itr_len, print_problematic=False):
-        progress_percentage=0
-        # print(itr_len)
-        print('0%', end='')
-        sys.stdout.flush()
+        """Converts the (a, b) polynomials generator itr of an (estimated) length itr_len to a contfrac hashtable."""
+        # filtered_postproc_funcs = [(i, f) for i,f in enumerate(self.postproc_funcs) if i in self.postproc_funcs_filter ]
+        filtered_postproc_funcs = itertools.compress(enumerate(self.postproc_funcs), self.postproc_funcs_filter)
 
-        filtered_postproc_funcs = [(i, f) for i,f in enumerate(self.postproc_funcs) if i in self.postproc_funcs_filter ]
-
-        for i, (cont_frac, pa, pb) in enumerate(itr):
-            if int(100 * i / itr_len) > progress_percentage:
-                progress_percentage = int(100 * i / itr_len)
-                print('\r%d%%' % progress_percentage, end='')
-                sys.stdout.flush()
-            cur_cont_frac = cont_frac.get_result()
-            if not cur_cont_frac.is_normal():
+        print('The following is a rough estimation only, and may be wrong to an order of 2-5 times.')
+        for (cont_frac, pa, pb) in progressbar.progressbar(itr, max_value=itr_len):
+            cur_cont_frac_val = cont_frac.get_result()
+            # is_normal = finite nonzero, not NaN, with exponent > Emin=-999999999999999999
+            if not cur_cont_frac_val.is_normal():
                 continue
 
             # this tries to replace the previous 'problematic number' check, it haven't been tested yet
-            if not cur_cont_frac.is_normal():
+            if not cur_cont_frac_val.is_normal():
                 if print_problematic:
                     print('problematic number')
-                    print(cur_cont_frac)
+                    print(cur_cont_frac_val)
                 continue
             for post_func_ind, post_f in filtered_postproc_funcs:
-                # print(cur_cont_frac)
-                if post_func_ind not in self.postproc_funcs_filter:
-                    pass
+                # print(cur_cont_frac_val)
+                # Seems redundant - we're already enumerating only filtered functions
+                # if post_func_ind not in self.postproc_funcs_filter:
+                #     pass
                 try:
-                    k = post_f(cur_cont_frac)
+                    k = post_f(cur_cont_frac_val)
                 except:
                     print(k)
                     raise
@@ -106,39 +154,47 @@ class MITM:
                     self.dec_hashtable[k].append(((pa, pb), post_func_ind))
         print()
 
-    def find_clicks(self, lhs_type, lhs_enumerator_params):
+    def find_clicks(self, lhs_classes, lhs_enumerator_params):
+        """Enumerating the LHS and looking for clicks. The comparison is made up to the accuracy of the stored values in
+        the hashtable.
+        Parameters:
+        lhs_classes - a dictionary with 'enum' and 'eval' keys, pointing to the enumeration and evaluation classes in
+                      lhs_evaluators.py.
+        lhs_enumerator_params - parameters to feed the lhs_enumerator. See the help for the relevant enumerator for more
+                                info."""
         filtered_params = []
-        progress_percentage=0
-        print('0%', end='')
-        lhs_enumerator = ENUMERATOR_TYPES[lhs_type](lhs_enumerator_params, self.target_generator())
-        lhs_evaluator = EVALUATOR_TYPES[lhs_type]
+        # lhs_enumerator = ENUMERATOR_TYPES[lhs_type](lhs_enumerator_params, self.target_generator())
+        # lhs_evaluator = EVALUATOR_TYPES[lhs_type]
+        lhs_enumerator = lhs_classes['enum'](lhs_enumerator_params, self.target_generator())
+        lhs_evaluator = lhs_classes['eval']
         lhs_generator = lhs_enumerator.generator()
-        lhs_iter_len = len(lhs_enumerator)
-        for i, enum_res_obj in enumerate(lhs_generator):
+        for enum_res_obj in progressbar.progressbar(lhs_generator, max_value=len(lhs_enumerator)):
             r = abs(enum_res_obj.get_val())
             if self.trunc_integer:
                 r -= int(r)
             if r in self.dec_hashtable or -r in self.dec_hashtable:
                 filtered_params.extend([ (ab, lhs_evaluator(enum_res_obj), post_func_ind, None)
                                          for ab, post_func_ind in self.dec_hashtable[r] ])
-            if int(100 * i / lhs_iter_len) > progress_percentage:
-                progress_percentage = int(100 * i / lhs_iter_len)
-                print('\r%d%%' % progress_percentage, end='')
-                sys.stdout.flush()
-        print('')
         self.filtered_params = filtered_params
 
     def refine_clicks(self, accuracy=10, num_of_iterations=3000, print_clicks=False):
+        """Filters the clicks and refines them by validation up to an arbitrary accuracy.
+        MUST be called only AFTER filter_clicks_by_approach_type.
+        Parameters:
+            accuracy - how many digital digits to compare (digits only. +1 is added automatically for the decimal dots).
+            num_of_iterations -
+            print_click - print every new click that passes. If you know what's good, you'll probably keep it False."""
         refined_params = []
         target_value = self.target_generator()
         # cont_frac = cont_fracs.ContFrac()
-        progress_percentage = 0
-        filtered_params_len = len(self.filtered_params)
-        print('0%\r', end='')
-        for i, (ab, lhs_res_obj, post_func_ind, convergence_info) in enumerate(self.filtered_params):
+        for ab, lhs_res_obj, post_func_ind, convergence_info in progressbar.progressbar(self.filtered_params):
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             cont_frac.set_approach_type_and_params(convergence_info)
             # cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
+            # This is a horrible hack, slowing down EVERYTHING. As a first step, this should be replaced by a small
+            # correction to the convergence parameters. Maybe taking the upper/lower bound of confidence from the
+            # fitting results.
+            # TODO: fix accoridng to the above comment.
             cont_frac.gen_iterations(num_of_iterations, dec('1E-%d' % (accuracy+100)))
             signed_rhs = self.postproc_funcs[post_func_ind](cont_frac.get_result())
             rhs = abs(signed_rhs)
@@ -146,11 +202,9 @@ class MITM:
                 continue
             signed_lhs = lhs_res_obj.get_val()
             lhs = abs(signed_lhs)
-            int_rhs = int(rhs)
-            int_lhs = int(lhs)
             if self.trunc_integer:
-                rhs -= int_rhs
-                lhs -= int_lhs
+                rhs -= int(rhs)
+                lhs -= int(lhs)
             if self.compare_dec_with_accuracy(rhs, lhs, accuracy):
                 if print_clicks:
                     print(ab)
@@ -165,65 +219,53 @@ class MITM:
                 try:
                     lhs_res_obj.add_int(int(signed_rhs - signed_lhs))
                 except:
-                    print(signed_rhs)
-                    print(signed_lhs)
-                    print(int(signed_rhs - signed_lhs))
-                    exit()
+                    raise RuntimeError('signed_rhs=%s, signed_lhs=%s, int(signed_rhs-signed_lhs)=%s' %
+                                       (signed_rhs, signed_lhs, int(signed_rhs-signed_lhs)))
+                # Turns the lhs to a canonic form. In example for a rational func, this will be the reduced form:
+                # p' = p/gcd(p, q)  ,  q' = q/gcd(p, q)
                 lhs_res_obj.canonalize_params()
                 refined_params.append((ab, lhs_res_obj, post_func_ind, convergence_info))
-            if int(100 * i / filtered_params_len) > progress_percentage:
-                progress_percentage = int(100 * i / filtered_params_len)
-                print('\r%d%%' % progress_percentage, end='')
-                sys.stdout.flush()
-        print('')
         self.filtered_params = refined_params
 
     def filter_uniq_params(self):
-        print('0%\r', end='')
-        progress_percentage = 0
-        filtered_params_len = len(self.filtered_params)
-        non_equiv_params = []
-        for i, params in enumerate(self.filtered_params):
+        """Filters out non-unique pairs of match lhs,rhs.
+        In example: if lhs_1=p(x)/q(x), rhs_1=contfrac(a(i), b(i)) and lhs_2=-p'(x)/q'(x), rhs_2=contfrac(-a(i), b(i))
+        where p'/q' = p/q = (p/gcd(p,q)) / (q/gcd(p,q)).
+        """
+        unique_params_filtered = []
+        # params = ab, lhs_res_obj, post_func_ind, convergence_info
+        for params in progressbar.progressbar(self.filtered_params):
             is_unique = True
-            for uniq_params in non_equiv_params:
-                uniq_lhs_res_obj= uniq_params[1]
-                if uniq_lhs_res_obj.is_equiv(uniq_params, params):
+            for uniqe_params in unique_params_filtered:
+                uniqe_lhs_res_obj= uniqe_params[1]
+                if uniqe_lhs_res_obj.is_equiv(uniqe_params, params):
                     is_unique = False
                     break
             if is_unique:
-                non_equiv_params.append(params)
-            if int(100 * i / filtered_params_len) > progress_percentage:
-                progress_percentage = int(100 * i / filtered_params_len)
-                print('\r%2d%%, num. of filtered unique params: %d' % (progress_percentage, len(non_equiv_params)),
-                      end='')
-                sys.stdout.flush()
-        print('')
-        self.filtered_params = non_equiv_params
+                unique_params_filtered.append(params)
+        self.filtered_params = unique_params_filtered
 
     def filter_integer_roots_numerators(self):
+        """Filters out contfracs for which any of the b interlaces have an integer root. The roots are found numerically
+        and are considered real if Im(root) < 0.001 and integer if fractional_part(root) < 0.001"""
         valid_params = []
         for params in self.filtered_params:
             b = params[0][1]
-            for b_p in b:
-                b_p_roots = numpy.roots(b_p)
-                b_p_real_roots = [ r for r in b_p_roots if abs(r.imag) < 0.001 ]
-                b_p_int_roots = [ r for r in b_p_real_roots if abs(r - round(r)) < 0.001 ]
-            if not b_p_int_roots:
+            roots = itertools.chain([ numpy.roots(b_p for b_p in b) ])
+            real_int_roots = [ (abs(r.imag) < 0.001) and (abs(r.real - round(r.real)) < 0.001)
+                               for r in roots ]
+            if not any(real_int_roots):
                 valid_params.append(params)
         self.filtered_params = valid_params
 
-    def filter_only_exp_convergence(self, print_surprising_nonexp_contfracs=False):  # , filter_uniq_list=True):
-        # if filter_uniq_list:
-        #     params_list = self.uniq_params
-        # else:
+    def filter_only_exp_convergence(self, print_surprising_nonexp_contfracs=False):
+        """Filters out only contfracs that converge (at least) exponentially.
+        Parameters:
+            print_surprising_nonexp_contfracs - True for printing contfracs that DO NO converge exponentially."""
+        # TODO: add either here or in filter_clicks_by_approach_type the discriminant test for exp. convergence
         params_list = self.filtered_params
-
-        progress_percentage = 0
-        filtered_params_len = len(params_list)
-        print('0%\r', end='')
-
         filtered_params_list = []
-        for i, cf_params in enumerate(params_list):
+        for cf_params in progressbar.progressbar(params_list):
             ab, lhs_res_obj, post_func_ind, convergence_info = cf_params
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             if cont_frac.is_convergence_fast():
@@ -233,29 +275,21 @@ class MITM:
                 print(cf_params)
                 cont_frac.estimate_approach_type_and_params()
                 print(cont_frac.get_approach_type_and_params())
-            if int(100 * i / filtered_params_len) > progress_percentage:
-                progress_percentage = int(100 * i / filtered_params_len)
-                print('\r%d%%' % progress_percentage, end='')
-                sys.stdout.flush()
-        print('')
         self.filtered_params = filtered_params_list
 
     def filter_clicks_by_approach_type(self, whitelist=['exp', 'super_exp', 'fast'], blacklist=None):     # , filter_uniq_list=True):
+        """Filters only clicks withe convergence from the whitelist, or drops clicks with convergence from the black
+         list. One of whitelist/black is required, and one only. See help for
+         ContFrac._estimate_approach_type_and_params_inner_alg
+         for more info about convergence types."""
         if not any([whitelist, blacklist]):
             raise ValueError('One is required: whitelist, blacklist')
         if whitelist and blacklist:
             raise ValueError('Only one is possible: whitelist, blacklist')
-        # if filter_uniq_list:
-        #     params_list = self.uniq_params
-        # else:
         params_list = self.filtered_params
 
-        progress_percentage = 0
-        filtered_params_len = len(params_list)
-        print('0%\r', end='')
-
         filtered_params_list = []
-        for i, cf_params in enumerate(params_list):
+        for cf_params in progressbar.progressbar(params_list):
             ab, lhs_res_obj, post_func_ind, convergence_info = cf_params
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             try:
@@ -270,26 +304,31 @@ class MITM:
             if (whitelist and approach_type in whitelist) or (blacklist and approach_type not in blacklist):
                 cf_params = (ab, lhs_res_obj, post_func_ind, (approach_type, approach_params))
                 filtered_params_list.append(cf_params)
-            if int(100 * i / filtered_params_len) > progress_percentage:
-                progress_percentage = int(100 * i / filtered_params_len)
-                print('\r%d%%' % progress_percentage, end='')
-                sys.stdout.flush()
-        print('')
-        # if filter_uniq_list:
-        #     self.uniq_params = params_list
-        # else:
         self.filtered_params = filtered_params_list
 
     def get_filtered_params(self):
+        """Returns the filtered parameters (the found 'clicks')."""
         return self.filtered_params
 
-    def delete_hashtable(self):
+    def reset_hashtable(self):
+        """Deletes the hashtable and creates a new one (with the earlier, predefined precision)."""
         del self.dec_hashtable
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
 
-    def get_results_as_eqns(self, postfuncs, ignore_zerob_exceptions=True):
+    def get_results_as_eqns(self, postproc_funcs, ignore_zerob_exceptions=True, depth=5):
+        """Exports the results to a list of latex equations.
+        postproc_funcs - a list of (textual) postproc funcs. Needs to be given as a parameter since so far, only the
+                         evaluated postproc funcs were supplied. This may be replaced by adding to postprocfuncs.py
+                         beside POSTPROC_FUNCS_LATEX a similar dictionary from the evaluated functions to the latex
+                         generators.
+        ignore_zerob_exceptions - if a ZeroB exception is raised while building the contfracs, ignore it and continue
+                                  to the next contfrac. This actually shouldn't happen, as these contfracs shouldn't be
+                                  saved in the first place.
+        depth - to what depth should the contfrac expression be built.
+        Returns: """
         eqns = []
-        eval_poly = cont_fracs.ContFrac._array_to_polynom
+        eval_poly = MathOperations.subs_in_polynom
+        # target names that should be replaces by anothers when exporting
         known_targets = {'pi': '\pi',
                         'phi': r'\varphi'}
 
@@ -304,19 +343,21 @@ class MITM:
                 else:
                     raise
 
-            depth = 5
+            # evaluate the first 'depth' values of a and b
             a = [eval_poly(pa[i % len(pa)], i) for i in range(depth)]
             b = [eval_poly(pb[i % len(pb)], i) for i in range(depth)]
 
+            # rename the target name, if needed (e.g. 'pi'-->'\pi')
             if self.target_name in known_targets:
                 target_name = known_targets[self.target_name]
             else:
                 target_name = self.target_name
 
-            # Creates the equation object
+            # Creates the equation object. At first lhs,rhs are latex expressions, then they are changed according to
+            # the postproc function.
             lhs = lhs_res_obj.get_latex_exp(target_name)
             rhs = latex_cont_frac(a, b)
-            lhs, rhs = POSTPROC_FUNCS_LATEX[postfuncs[post_func_ind]](lhs, rhs)
+            lhs, rhs = POSTPROC_FUNCS_LATEX[postproc_funcs[post_func_ind]](lhs, rhs)
             eqn = r'{0} = {1}'.format(lhs, rhs)
 
             # Appends equation
@@ -325,17 +366,25 @@ class MITM:
         return eqns
 
     def export_to_csv(self, filename):
+        """Exports the found results to a csv file."""
         with io.StringIO(newline='') as csvbuffer:
             csvwriter = csv.writer(csvbuffer)
             # csvwriter.writerow(['postproc_funcs', postfuncs, 'target_name', self.target_name])
+            # First row: "target_name; 'pi'". The above line can be uncommented to save the postproc funcs too. However,
+            # if the code is used correctly (i.e. postproc funcs are only added, never, moved around or deleted), then
+            # the later specified postproc_func indices should be enough.
             csvwriter.writerow(['target_name', self.target_name])
+            # Second row: columns titles for all the following results
             csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'postproc_func',
                                 'LHS type', 'LHS params',
                                 'convergence type', 'convergence rate', 'postfunc(cont_frac)',
                                 'LHS val'])
+            # add a row for each result
             for ab, lhs_res_obj, post_func_ind, convergence_info in self.filtered_params:
                 pa, pb = ab
-                lhs_type = EVALUATOR2TYPE[type(lhs_res_obj)]
+                # lhs_type = EVALUATOR2TYPE[type(lhs_res_obj)]
+                lhs_type =str(lhs_res_obj)
+                # builds the contfrac from the results to receive the final, numerical result (after the postproc func).
                 cont_frac, postproc_res, lhs_res_obj = self.build_contfrac_from_params((ab, lhs_res_obj,
                                                                                         post_func_ind,
                                                                                         convergence_info))
@@ -345,11 +394,22 @@ class MITM:
                 csvwriter.writerow([pa, pb, POSTPROC_FUNCS[post_func_ind], lhs_type, lhs_res_obj.get_params(),
                                     convergence_info[0], convergence_info[1],
                                     postproc_res.to_eng_string(), lhs_res_obj.get_val().to_eng_string()])
+            # Saves the results
             with open(filename, 'w', newline='') as csvfile:
                 csvbuffer.seek(0)
                 shutil.copyfileobj(csvbuffer, csvfile)
 
     def build_contfrac_from_params(self, params, iterations=3000):
+        """Builds a continued fraction, post-processed value and an LHS object from params.
+           params - (ab, lhs_res_obj, post_func_ind, convergence_info)
+                    ab - [a_poly, b_poly] where a_poly/b_poly is of the format [poly1, poly2, ...] for these polynomials
+                         to be used as an interlace, and poly1/2/... is of the format
+                         [c0, c1, c2, ...] <=> c0+c1*x+c2*x^2+...
+                    lhs_res_obj - an LHS object
+                    post_func_ind - index of a postproc func in postproc_funcs list to be use.
+                    convergence_info - convergence info produced by the original contfrac object. UNUSED.
+           Returns: (cont_frac, postproc_func(cont_frac_value), lhs_res_obj)
+          """
         ab, lhs_res_obj, post_func_ind, convergence_info = params
         pa, pb = ab
         cont_frac = cont_fracs.ContFrac(a_coeffs=pa, b_coeffs=pb)
@@ -358,6 +418,9 @@ class MITM:
 
     @staticmethod
     def compare_dec_with_accuracy(d1, d2, accuracy):
+        """Compares two decimals up to a specified accuracy."""
+        # Decimal.quantize('1.0000...') may be used too. Profiling shows, however, that string a conversion and slicing
+        # is faster.
         # +1 for decimal dot
         accuracy += 1
         return d1.to_eng_string()[:accuracy+1] == d2.to_eng_string()[:accuracy+1]

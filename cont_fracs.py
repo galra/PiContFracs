@@ -1,9 +1,11 @@
-import numpy as np
+"""Implements a continued fraction class."""
+
 import basic_representation_types
 from decimal import Decimal as dec
 from gen_consts import gen_pi_const
 import math
 import scipy.stats # used for the linear regression fitting
+from utils import MathOperations
 
 class ZeroB(Exception):
     """Used as an exception in case that a ContFrac is truncated by a zero numerator along the way."""
@@ -18,6 +20,7 @@ class ContFrac(basic_representation_types.BasicContFracAlgo):
                  first_iter_calc_matrix=None, target_val=None, logging=False):
         """a_coeffs - [[x_1, y_1, z_1, ...], [x_2, y_2, z_2, ...], ..., [x_{n-1}, y_{n-1}, z_{n-1}, ...]] <=>
                       a_i = x_(i%n)+y_(i%n)*i+z(i%n)*i^2+...
+                      if no interlace is needed, [x_1, y_1, z_1, ...] can be supplied as well.
         b_coeffs - same as a_coeffs, for b_i = ...
         avoid_zero_b - if a finite continued fraction is achieved (b_i=0 for some i>0), run stops and excpetion ZeroB
                        is thrown.
@@ -36,7 +39,7 @@ class ContFrac(basic_representation_types.BasicContFracAlgo):
         params = {'a_coeffs': a_coeffs, 'b_coeffs': b_coeffs, 'contfrac_res': 1}
         if first_iter_calc_matrix is None:
             self._auto_first_promo_mat = True
-            first_iter_calc_matrix = self._autogen_first_iter_calc_matrix(params, dtype)
+            first_iter_calc_matrix = self._autogen_first_iter_calc_matrix(params)
         else:
             self._auto_first_promo_mat = False
 
@@ -117,7 +120,7 @@ class ContFrac(basic_representation_types.BasicContFracAlgo):
     def _default_promo_mat_gen(self, i, a_coeffs, b_coeffs):
         """i - iteration index.
         Returns (a_i, b_i)"""
-        a2p = ContFrac._array_to_polynom
+        a2p = MathOperations.subs_in_polynom
         a_i = a2p(a_coeffs[i % len(a_coeffs)], divmod(i, len(a_coeffs))[0])
         b_i = a2p(b_coeffs[(i-1) % len(b_coeffs)], divmod(i, len(b_coeffs))[0])
         if self._avoid_zero_b and b_i == 0 and i > 0:
@@ -202,8 +205,8 @@ class ContFrac(basic_representation_types.BasicContFracAlgo):
         """Returns true if the convergence type is exponential or over exponential.
 False if it's sub exponential (e.g. linear)."""
         # This is an old function. It's still in use, but it's yucky and I don't feel like going through it and
-        # document it. Sorry :(
-        # Hopefully it will be replaced with some theoretical insights.
+        # neither should you :(
+        # Hopefully it will be replaced with some more theoretical insights.
         # HOWEVER, IT IS GENERAL AND MAY BE USEFUL FOR NEW, FUTURE REPRESENTATION METHODS.
         if iters_step < 6:
             ValueError('iters_step should be at least 4')
@@ -372,6 +375,7 @@ False if it's sub exponential (e.g. linear)."""
         log_y_odd = [ math.log(d) for i, d in delta_odd ]
         slope_odd, intercept_odd, r_value_odd, p_value_odd, std_err_odd = scipy.stats.linregress(log_x_odd, log_y_odd)
 
+        # TODO: replace the -1 by *0.95? need to make sure first what is the slop (is it negative?)
         approach_parameter = (min(abs(slope_pair), abs(slope_odd))-1, min(intercept_pair, intercept_odd),
                               min(r_value_pair**2, r_value_odd**2))
         return (approach_type, approach_parameter)
