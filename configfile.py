@@ -6,9 +6,8 @@ import json
 import re
 import os
 from postprocfuncs import POSTPROC_FUNCS
-from basic_enum_poly_params import BasicEnumPolyParams, IndexedParameterEnumPolyParams
-from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
-
+from enum_poly_params import AB_POLYS_TYPES
+from lhs_evaluators import LHS_TYPES
 
 class ConfigParser(configparser.ConfigParser):
     """Parses a config file in a *.ini format."""
@@ -37,6 +36,9 @@ class ConfigParser(configparser.ConfigParser):
         for section in parsed_config.sections():
             for item_key, item_val in parsed_config[section].items():
                 self._config[item_key] = self._cast_param_val(item_key, item_val)
+        # define all the unspecified required parameters to None
+        for k in set(CONFIG_PARAMS_TYPES.keys()) - set(self._config.keys()):
+            self._config[k] = None
         # update the hashtable name to the new/a new version.
         self._gen_hashtable_filename()
         # convert the postproc functions to their indices
@@ -179,6 +181,7 @@ class ConfigParser(configparser.ConfigParser):
 # defines all the supported config parameters and their types & parser
 CONFIG_PARAMS_TYPES = {'const': ConfigParser.string_parameter_parser,
                        'ab_polys_type': ConfigParser.poly_type_parser,
+                       'ab_polys_special_params': json.loads,
                        'print_surprising_nonexp_contfracs': ConfigParser.string_parameter_parser,
                        'gen_hashtable_only': ConfigParser.string_parameter_parser,
                        # json is used to support interlace lists
@@ -192,10 +195,3 @@ CONFIG_PARAMS_TYPES = {'const': ConfigParser.string_parameter_parser,
                        'hashtable_file': ConfigParser.string_parameter_parser,
                        'hashtable_num_of_iterations': int,
                        'hashtable_precision': int}
-
-# defines the types of supported polynomials
-AB_POLYS_TYPES = {str(BasicEnumPolyParams): BasicEnumPolyParams,
-                  str(IndexedParameterEnumPolyParams): IndexedParameterEnumPolyParams}
-# defines the types of supported lhs
-LHS_TYPES = {str(ULCDEnumerator): {'enum': ULCDEnumerator, 'eval': ULCDEvaluator},
-             str(RationalFuncEnumerator): {'enum': RationalFuncEnumerator, 'eval': RationalFuncEvaluator}}

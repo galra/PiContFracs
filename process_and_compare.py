@@ -293,8 +293,8 @@ def analyze_contfracs_csv(csv_path, filetype='enum_res'):
 # see the convergence analysis pdf for more details.
 def is_poly_or_exp_approach(contfrac, iters=5000, initial_cutoff=1500, iters_step=500, exponential_threshold=1.1,
                             find_poly_parameter=False):
-    """Returns 'exp', 'poly', 'undefined', 'fast' and 'mixed', as a tuple of (string,num): (approach_type, approach_parameter)
-or ('poly', (approach_parameter, R**2))."""
+    """Returns 'exp', 'poly2sympoly', 'undefined', 'fast' and 'mixed', as a tuple of (string,num): (approach_type, approach_parameter)
+or ('poly2sympoly', (approach_parameter, R**2))."""
     if iters_step < 6:
         ValueError('iters_step should be at least 4')
 
@@ -385,12 +385,12 @@ or ('poly', (approach_parameter, R**2))."""
             approach_parameter = min(mean_pair_ratio**type(mean_pair_ratio)(0.5),
                                      mean_odd_ratio**type(mean_odd_ratio)(0.5))
         else:
-            approach_type = 'poly'
+            approach_type = 'poly2sympoly'
 
-    if approach_type != 'poly' or not find_poly_parameter:
+    if approach_type != 'poly2sympoly' or not find_poly_parameter:
         return (approach_type, approach_parameter)
 
-#     We're requested to find the poly parameter
+#     We're requested to find the poly2sympoly parameter
     log_x_pair = [ math.log(i) for i, d in delta_pair ]
     log_y_pair = [ math.log(d) for i, d in delta_pair ]
     slope_pair, intercept_pair, r_value_pair, p_value_pair, std_err_pair = scipy.stats.linregress(log_x_pair,

@@ -4,7 +4,7 @@ import enum_params
 import time
 import datetime
 from gen_consts import gen_pi_const, gen_e_const, gen_feig_consts, gen_euler_masch_const, gen_percolation_consts, \
-                            gen_zeta_consts
+                            gen_zeta_consts, gen_phi_const
 from postprocfuncs import POSTPROC_FUNCS, EVALUATED_POSTPROC_FUNCS
 import dill as pickle
 from latex import generate_latex
@@ -12,7 +12,7 @@ import os
 from configfile import ConfigParser
 from configfile import CONFIG_PARAMS_TYPES as LEGAL_CONFIG_PARAMS
 import sys
-import pdb
+from functools import partial
 from utils import MeasureRuntime
 
 
@@ -47,16 +47,17 @@ def main(configfile='config.ini'):
         setattr(params, config_variable, config[config_variable])
         print('%s is set up to %s ' % (config_variable, getattr(params, config_variable)))
     print('\n-------------------------------------------------------\n')
-    gen_real_feig_const = lambda: gen_feig_consts(params.i)
-    gen_real_percolation_const = lambda: gen_percolation_consts(params.i)
-    gen_real_zeta_conts = lambda: gen_zeta_consts(params.i)
+    gen_real_feig_const = partial(gen_feig_consts, params.i)
+    gen_percolation_const = partial(gen_percolation_consts, params.i)
+    gen_zeta_const = partial(gen_zeta_consts, params.i)
 
     consts_generators = {'e': gen_e_const,
                          'pi': gen_pi_const,
                          'feig': gen_real_feig_const,
                          'euler_masch': gen_euler_masch_const,
-                         'percolation': gen_real_percolation_const,
-                         'zeta': gen_real_zeta_conts}
+                         'percolation': gen_percolation_const,
+                         'zeta': gen_zeta_const,
+                         'phi': gen_phi_const}
     if params.const in consts_generators:
         target_generator = consts_generators[params.const]
     else:
@@ -93,7 +94,6 @@ def main(configfile='config.ini'):
     if params.hashtable_file_operation in ['expand', 'generate']:
         mitm.build_hashtable(range_a=params.a_coeffs_range, range_b=params.b_coeffs_range)
         print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
-        # TODO: Any new parameters should be added and saved here?
         mitm.dec_hashtable['parameters'] = {'target_generator': target_generator, 'target_name': params.const,
                                             'POSTPROC_FUNCS': EVALUATED_POSTPROC_FUNCS}
         with open(params.hashtable_file, 'wb') as output_file:
@@ -123,7 +123,6 @@ def main(configfile='config.ini'):
         mitm.refine_clicks(accuracy=20, num_of_iterations=350, print_clicks=False)
         print('Finished refining clicks, 19 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-        mitm.filter_uniq_params()
         mitm.filter_uniq_params()
         mitm.filter_uniq_params()
         print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
@@ -164,6 +163,9 @@ def main(configfile='config.ini'):
 # try:
 if __name__ == '__main__':
     if len(sys.argv) > 1:
+        if sys.argv[1] in ['-h', '--help', '/?', '-?']:
+            print('Usage: %s [configfile]\n\tConfig file is default to config.ini' % sys.argv[0])
+            exit()
         main(sys.argv[1])
     else:
         main()

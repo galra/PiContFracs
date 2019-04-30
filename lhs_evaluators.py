@@ -4,15 +4,21 @@ from decimal import Decimal as dec
 import itertools
 from functools import reduce
 import operator
-# from flint import fmpz_poly as poly
 import sympy
 from postprocfuncs import INVERSE_POSTPROC_PAIRS
 from utils import MathOperations
 
+
 x_sym = sympy.symbols('x')
-def poly(coeffs):
-    """Converts a polynomial of the form [a_0, a_1, a_2, ...] to  'a_0+a_1*x+a_2*x^2+...' sympy.poly object."""
+
+
+def poly2sympoly(coeffs):
+    """Converts a polynomial of the form [a_0, a_1, a_2, ...] to  'a_0+a_1*x+a_2*x^2+...' sympy.poly2sympoly object."""
     return sympy.poly('+'.join('%d*x**%d' % (c, i) for i, c in enumerate(coeffs)), x_sym)
+
+
+def sympoly2poly(sym_poly):
+    return sym_poly.all_coeffs()[::-1]
 
 
 class LHSEvaluator:
@@ -68,7 +74,7 @@ class LHSEvaluator:
 
     def canonalize_params(self):
         """Turns the LHS parameters into canonical form."""
-        raise NotImplementedError()
+        pass
 
 
 class LHSEnumerator:
@@ -244,6 +250,8 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
     def __init__(self, lhs_evaluator_params, target_constant=None):
         """See LHSEvaluator.__init__"""
         super().__init__(lhs_evaluator_params, target_constant)
+        self._should_update_numerator_p_symbolic = True
+        self._should_update_denominator_p_symbolic = True
 
     def reinit_params(self, params):
         """Initializes and calculates the value.
@@ -256,26 +264,48 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
             raise TypeError('added_int has to be an integer')
         self._calc_val()
 
+    @property
+    def numerator_p_symbolic(self):
+        if not hasattr(self, '_numerator_p_symbolic') or self._should_update_numerator_p_symbolic:
+            self._numerator_p_symbolic = poly2sympoly(self.numerator_p)
+            self._should_update_numerator_p_symbolic = False
+        return self._numerator_p_symbolic
+
+    @numerator_p_symbolic.setter
+    def numerator_p_symbolic(self, sym_poly):
+        self._numerator_p_symbolic = sym_poly
+        self._should_update_numerator_p_symbolic = False
+        self.numerator_p = sympoly2poly(sym_poly)
+
+    @property
+    def denominator_p_symbolic(self):
+        if not hasattr(self, '_denominator_p_symbolic') or self._should_update_denominator_p_symbolic:
+            self._denominator_p_symbolic = poly2sympoly(self.denominator_p)
+            self._should_update_denominator_p_symbolic = False
+        return self._denominator_p_symbolic
+
+    @denominator_p_symbolic.setter
+    def denominator_p_symbolic(self, sym_poly):
+        self._denominator_p_symbolic = sym_poly
+        self._should_update_denominator_p_symbolic = False
+        self.denominator_p = sympoly2poly(sym_poly)
+
     def _calc_val(self):
         """Calculates the value of the LHS based on the LHS parameters (numerator, denominator, target constant and
         added int)."""
-        self.numerator = MathOperations.subs_in_polynom([ int(i) for i in self.numerator_p.coeffs() ],
-                                                        self.target_constant)
-        self.denominator = MathOperations.subs_in_polynom([ int(i) for i in self.denominator_p.coeffs() ],
-                                                          self.target_constant)
-
-        # self.numerator = dec(str(self.numerator_p(self.target_constant))[2:-1])
-        # self.denominator = dec(str(self.denominator_p(self.target_constant))[2:-1])
+        self.numerator = MathOperations.subs_in_polynom(self.numerator_p, self.target_constant)
+        self.denominator = MathOperations.subs_in_polynom(self.denominator_p, self.target_constant)
 
         if not self.denominator.is_normal() or not self.numerator.is_normal():
             self.val = dec('nan')
         else:
-            # self.val = dec(self.numerator) / dec(self.denominator) + self.added_int
             self.val = self.numerator / self.denominator + self.added_int
 
     def flip_sign(self):
         """Flips the sign of the LHS by changing the parameters appropriately."""
-        self.denominator_p *= -1
+        self.denominator_p = [ -1*c for c in self.denominator_p ]
+        self._should_update_denominator_p_symbolic = True
+        self.added_int *= -1
         self.update_params()
         self._calc_val()
 
@@ -288,6 +318,8 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         """Updates the self.params to the new, current parameters (numerator, denominator and added_int)
         and recalculates the LHS value."""
         self.params = (self.numerator_p, self.denominator_p, self.added_int)
+        self._should_update_numerator_p_symbolic = True
+        self._should_update_denominator_p_symbolic = True
         self._calc_val()
 
     @staticmethod
@@ -312,11 +344,16 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         elif post_func_ind1 != post_func_ind2:
             return False
 
+        ratio_func1_obj.canonalize_params()
+        ratio_func2_obj.canonalize_params()
+
         # find the reduced form, and check if p1/q1==p2/q2 in the reduced form up to a constant, and if b1==b2, a1==+-a2
-        numerator1_p, denominator1_p, _ = ratio_func1_obj.get_params()
+        numerator1_p = ratio_func1_obj.numerator_p_symbolic
+        denominator1_p = ratio_func1_obj.denominator_p_symbolic
         quotient1, rem1 = divmod(numerator1_p, denominator1_p)
         quotient1[0] = 0
-        numerator2_p, denominator2_p, _ = ratio_func2_obj.get_params()
+        numerator2_p = ratio_func2_obj.numerator_p_symbolic
+        denominator2_p = ratio_func2_obj.denominator_p_symbolic
         if is_inverse:
             numerator2_p, denominator2_p = denominator2_p, numerator2_p
         quotient2, rem2 = divmod(numerator2_p, denominator2_p)
@@ -328,8 +365,8 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
             if quotient1 == quotient2 and rem1 == rem2:
                 return True
         return False
-        # a1_ps, b1_ps = [ [ poly(list(k)) for k in cf_polys ] for cf_polys in ab1 ]
-        # a2_ps, b2_ps = [ [ poly(list(k)) for k in cf_polys ] for cf_polys in ab2 ]
+        # a1_ps, b1_ps = [ [ poly2sympoly(list(k)) for k in cf_polys ] for cf_polys in ab1 ]
+        # a2_ps, b2_ps = [ [ poly2sympoly(list(k)) for k in cf_polys ] for cf_polys in ab2 ]
         # if (
         #             ((a1_ps == [ -p for p in a2_ps ]) and
         #              (all([ p.degree() < 2 for p in a1_ps ]) and all([ p.degree() < 2 for p in a2_ps ])) or
@@ -347,10 +384,11 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         """Returns a latex expression of the LHS.
         Parameters:
             target_constant_name - the name of the substituted target constant."""
+        self.canonalize_params()
         latex_exp_parts = []
         for poly in [self.numerator_p, self.denominator_p]:
             poly_elements = []
-            for i, c in enumerate([ int(i) for i in poly.coeffs() ]):
+            for i, c in enumerate(poly):
                 if c == 0:
                     continue
                 if i == 0:
@@ -385,34 +423,25 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         in advance, and so RationalFuncEnumerator does."""
         # TODO: fix the above documentation.
         numerator_p, denominator_p, added_int = self.params
-        quotient, remainder = divmod(numerator_p, denominator_p)
+        quotient, remainder = divmod(self.numerator_p_symbolic, self.denominator_p_symbolic)
         # params[2] = added int
         self.added_int += int(remainder[0])
         remainder[0] = 0
         # params[0] = numerator , params[1] = denominator
         self.old_numerator_denominator_p = (self.numerator_p, self.denominator_p)
-        self.numerator_p = quotient * denominator_p + remainder
-        self.denominator_p = denominator_p
+        self.numerator_p_symbolic = quotient * denominator_p + remainder
+        self.denominator_p_symbolic = self._de
         self.update_params()
-
-    # Old method. Left as a backup. Delete if not used in a while
-    # 30/01/2019
-    # TODO: Delete if needed
-    # @staticmethod
-    # def array_to_polynom(coeffs, x):
-    #     """Syntax sugar (to avoid VERY long expressions) to call _array_to_polynom). For more info about the parameters,
-    #     check the help for cont_fracs.ContFrac._array_to_polynom."""
-    #     return cont_fracs.ContFrac._array_to_polynom(coeffs, x)
 
     # Old methods for lists polynomials instead of sympy.Poly. Delete if it's not needed in a while.
     # 30/01/2019
     # TODO: Delete if needed
     # @staticmethod
-    # def _normalize_poly(poly):
-        # while poly and poly[-1] == 0:
-        #     poly.pop()
-        # if poly == []:
-        #     poly.append(0)
+    # def _normalize_poly(poly2sympoly):
+        # while poly2sympoly and poly2sympoly[-1] == 0:
+        #     poly2sympoly.pop()
+        # if poly2sympoly == []:
+        #     poly2sympoly.append(0)
     #
     # @staticmethod
     # def poly_divmod(num, den):
@@ -460,7 +489,8 @@ class RationalFuncEnumerator(LHSEnumerator, metaclass=RationalFuncMetaClass):
                 The range is from (e.g. for p_0) p_0_min to p_1_max-1.
             target_constant - the sought constant to be substitued into the ULCD expression."""
         super().__init__(ratiofunc_evaluator_params, target_constant)
-        self._lhs_rational_numerator, self._lhs_rational_denominator = ratiofunc_evaluator_params
+        self._lhs_rational_numerator, self._lhs_rational_denominator, self._force_bigger_numerator = \
+            ratiofunc_evaluator_params
         self.target_constant = target_constant
         numerator_num_of_options = reduce(operator.mul, [ c[1] - c[0] for c in self._lhs_rational_numerator])
         denominator_num_of_options = reduce(operator.mul, [ c[1] - c[0] for c in self._lhs_rational_denominator])
@@ -470,28 +500,27 @@ class RationalFuncEnumerator(LHSEnumerator, metaclass=RationalFuncMetaClass):
         """Generates rational functions as instances of RationalFuncEvaluator from the parameters range supplied during
         initialization.
         """
-        generated_funcs = []
+        # The coefficients were originally converted to symbolic polynomials, canonalized and tested whether an
+        # equivalent rational function has already been evaluated. However, this increases the runtime by a scale of
+        # 10^2 to 10^3. Therefore, all these code pieces were deleted, and equivalent rational functions are being
+        # enumerated naively. These code parts can be found in older versions of this file.
+
         numerator_iterator = itertools.product(*[ range(*c_range) for c_range in self._lhs_rational_numerator ])
         for numerator_poly_coeffs in numerator_iterator:
             # skip the zero polynomial
             if not any(numerator_poly_coeffs):
                 continue
-            numerator_p = poly(list(numerator_poly_coeffs))
-            sign_coeff = 1
-            # switch the numerator to a 'fixed' polynomial, with positive leading coefficient.
-            if numerator_p.coeffs()[-1] < 0:
-                numerator_p *= -1
-                sign_coeff = -1
             denominator_iterator = itertools.product(*[ range(*c_range) for c_range in self._lhs_rational_denominator ])
             for denominator_poly_coeffs in denominator_iterator:
                 # skip the zero polynomial
                 if not any(denominator_poly_coeffs):
                     continue
-                denominator_p = poly(list(denominator_poly_coeffs))
-                # switch sign if p had to be 'fixed'
-                denominator_p *= sign_coeff
                 # Skip the constant functions p_0/q_0
-                if (numerator_p.degree() < 2) and (denominator_p.degree() < 2):
+                numerator_deg = len(list(itertools.dropwhile(lambda x: x == 0, reversed(numerator_poly_coeffs))))
+                denominator_deg = len(list(itertools.dropwhile(lambda x: x == 0, reversed(denominator_poly_coeffs))))
+                if (numerator_deg < 2) and (denominator_deg < 2):
+                    continue
+                if self._force_bigger_numerator and numerator_deg < denominator_deg:
                     continue
                 # continue if zero or NaN numerator/denominator
                 numerator_val = MathOperations.subs_in_polynom(numerator_poly_coeffs, self.target_constant)
@@ -499,69 +528,29 @@ class RationalFuncEnumerator(LHSEnumerator, metaclass=RationalFuncMetaClass):
                 # normal: finite, non-zero, not ridiculously small (~E-9999999999999...) and not NaN
                 if not numerator_val.is_normal() or not denominator_val.is_normal():
                     continue
+                yield RationalFuncEvaluator((numerator_poly_coeffs, denominator_poly_coeffs, 0), self.target_constant)
 
-                # Simplify p, q if they aren't mutually prime
-                # Try to divide them by one another.
-                # Redundant because the gcd is calculated right after. Left here in case problems will arise.
-                # Please delete later if note.
-                # 30/01/2019
-                # TODO: delete if needed.
-                # quotient, rem = divmod(numerator_p, denominator_p)
-                # if not rem:
-                #     numerator_p = quotient
-                #     denominator_p = poly([1])
-                # else:
-                #     quotient, rem = divmod(denominator_p, numerator_p)
-                #     if not rem:
-                #         denominator_p = quotient
-                #         numerator_p = poly([1])
-                #
-                gcd_p = numerator_p.gcd(denominator_p)
-                if gcd_p != 1:
-                    numerator_p = divmod(numerator_p, gcd_p)[0]
-                    denominator_p = divmod(denominator_p, gcd_p)[0]
-                func_params = (numerator_p, denominator_p)
-                # Skip the constant functions p_0/q_0
-                if (numerator_p.degree() < 2) and (denominator_p.degree() < 2):
-                    continue
-                # If an equivalent function was tested already - continue
-                if func_params in generated_funcs:
-                    continue
-                # Unclear what this is for. The zero polynomial has been filtered out at the beginning, and has a degree
-                # of sympy.numbers.NegativeInfinity().
-                # This is left here in case it's purpose will be cleared in the near future. Otherwise, please remove it
-                # 30/01/2019
-                # TODO: remove if needed
-                # if numerator_p.degree() == -1 or denominator_p.degree() == -1:
-                #     continue
-                generated_funcs.append(func_params)
-                yield RationalFuncEvaluator((numerator_p, denominator_p, 0), self.target_constant)
 
-    # Old method, for polynomials that are lists instead of sympy.Poly
-    # Delete if it's not needed in a while
-    # 30/01/2019
-    # TODO: Delete if needed
-    # @staticmethod
-    # def _are_polys_linearly_dependent(p1, p2):
-    #     # 1st line: p1 is a monom, 2nd line p2 is a monom, 3rd line is linear dependency
-    #     if (len(p1) == 1 or not any(p1[1:])) and (len(p2) == 1 or not any(p2[1:])) and \
-    #             not all([p1[0] % p2[0], p2[0] % p1[0]]):
-    #         return True
-    #
-    #     gcd_p1 = math.gcd(p1[0], p1[1])
-    #     for c in p1[2:]:
-    #         gcd_p1 = math.gcd(gcd_p1, c)
-    #
-    #     gcd_p2 = math.gcd(p2[0], p2[1])
-    #     for c in p2[2:]:
-    #         gcd_p2 = math.gcd(gcd_p2, c)
-    #
-    #     p1 = [ divmod(c, gcd_p1)[0] for c in p1 ]
-    #     p2 = [ divmod(c, gcd_p2)[0] for c in p2 ]
-    #     min_len = min(len(p1), len(p2))
-    #     if any(p1[min_len:]) or any(p2[min_len:]):
-    #         return False
-    #     if all([ c1 == c2 for c1, c2 in zip(p1, p2) ]):
-    #         return True
-    #
-    #     return False
+def define_lhs_types():
+    """Autogenerates the global LHS_TYPES = {<lhs_type_name>: {'eval': eval_class, 'enum': enum_class}}"""
+    import sys
+    from inspect import getmembers, isclass
+    from itertools import groupby
+    global LHS_TYPES
+    lhs_grouped = groupby([ lhs_class[1] for lhs_class
+                            in getmembers(sys.modules[__name__],
+                                          lambda cl: isclass(cl) and issubclass(cl, (LHSEvaluator, LHSEnumerator)))
+                            if lhs_class[1] not in [LHSEnumerator, LHSEvaluator] ],
+                          lambda cl: str(cl))
+    LHS_TYPES = {}
+    for k, classes in lhs_grouped:
+        for c in classes:
+            if issubclass(c, LHSEvaluator):
+                subkey = 'eval'
+            else:
+                subkey = 'enum'
+            LHS_TYPES.setdefault(k, {})[subkey] = c
+
+# Creates the global LHS_TYPES
+LHS_TYPES = {}
+define_lhs_types()

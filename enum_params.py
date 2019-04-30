@@ -9,8 +9,8 @@ from decimal import Decimal as dec
 from gen_consts import gen_pi_const
 import csv
 from latex import latex_cont_frac
-from postprocfuncs import POSTPROC_FUNCS ,POSTPROC_FUNCS_LATEX
-from basic_enum_poly_params import BasicEnumPolyParams, set_precision
+from postprocfuncs import EVALUATED_POSTPROC_FUNCS ,POSTPROC_FUNCS, INVERSE_POSTPROC_PAIRS ,POSTPROC_FUNCS_LATEX
+from enum_poly_params import BasicEnumPolyParams, set_precision
 import io
 import shutil
 import numpy
@@ -32,9 +32,11 @@ from utils import MathOperations
 # do we still want to keep the default values here? (some of them require special imports that are not needed otherwise)
 class MITM:
     # TODO: right documentation. What does this class do?
-    def __init__(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs=[lambda x: x],
-                 postproc_funcs_filter=[], trunc_integer=True, hashtable_prec=15, ab_poly_class=BasicEnumPolyParams,
-                 enum_only_exp_conv=True, num_of_iterations=300, prec=50):
+    def __init__(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs_filter=(0, 1, 2, 10),
+                 trunc_integer=True, hashtable_prec=15, ab_poly_class=BasicEnumPolyParams, ab_poly_special_params=None,
+                 enum_only_exp_conv=True, num_of_iterations=300, prec=50, postproc_funcs=EVALUATED_POSTPROC_FUNCS,
+                 postproc_funcs_text=POSTPROC_FUNCS, postproc_funcs_text_inverse=INVERSE_POSTPROC_PAIRS,
+                 postproc_funcs_latex=POSTPROC_FUNCS_LATEX):
         """target_generator - function that generates the target value.
         target_name - the name of the target, used for exporting and displaying the results.
         postproc_funcs - a list of functions that can be applied on the continued fraction results before saving to
@@ -64,24 +66,30 @@ class MITM:
         prec - the decimal precision to be used during calculations. This of course bounds all other used precisions."""
         self.rhs_polys_enumer = ab_poly_class(num_of_iterations=num_of_iterations,
                                               enum_only_exp_conv=enum_only_exp_conv, avoid_int_roots=True,
-                                              should_gen_contfrac=True, avoid_zero_b=True, prec=prec)
+                                              should_gen_contfrac=True, avoid_zero_b=True, prec=prec,
+                                              special_params=ab_poly_special_params)
         self._polys_enumer_num_of_iterations = num_of_iterations
         self._polys_enumer_enum_only_exp_conv = enum_only_exp_conv
 
         set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
-        self.postproc_funcs = postproc_funcs
         self.postproc_funcs_filter = postproc_funcs_filter
         self.trunc_integer = trunc_integer
         self.hashtable_prec = hashtable_prec
         self.prec = prec
         self.dec_hashtable = DecimalHashTable(self.hashtable_prec)
+        self.postproc_funcs = postproc_funcs
+        self.postproc_funcs_text = postproc_funcs_text
+        self.postproc_funcs_text_inverse = postproc_funcs_text_inverse
+        self.postproc_funcs_latex = postproc_funcs_latex
         self.filtered_params = []
 
-    def redefine_settings(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs=[lambda x: x],
-                          postproc_funcs_filter=[], trunc_integer=True, hashtable_prec = 15,
-                          ab_poly_class=BasicEnumPolyParams, prec=50):
+    def redefine_settings(self, target_generator=gen_pi_const, target_name='pi', postproc_funcs_filter=(0, 1, 2, 10),
+                          trunc_integer=True, hashtable_prec=15, ab_poly_class=BasicEnumPolyParams,
+                          ab_poly_special_params=None, prec=50, postproc_funcs=EVALUATED_POSTPROC_FUNCS,
+                          postproc_funcs_text=POSTPROC_FUNCS, postproc_funcs_text_inverse=INVERSE_POSTPROC_PAIRS,
+                          postproc_funcs_latex=POSTPROC_FUNCS_LATEX):
         """Redefines the class's settings. See the help of '__init__' for more info.
         Two important differences are:
             1) The contfrac's a,b enumerator is recreated if ab_poly_class is changed to a
@@ -94,15 +102,19 @@ class MITM:
                                                   avoid_int_roots=True,
                                                   should_gen_contfrac=True,
                                                   num_of_iterations=self._polys_enumer_num_of_iterations,
-                                                  threshold=None)
+                                                  threshold=None, special_params=ab_poly_special_params)
+
         set_precision(prec)
         self.target_generator = target_generator
         self.target_name = target_name
-        self.postproc_funcs = postproc_funcs
         self.postproc_funcs_filter = postproc_funcs_filter
         self.trunc_integer = trunc_integer
         self.hashtable_prec = hashtable_prec
         self.dec_hashtable.update_accuracy(self.hashtable_prec)
+        self.postproc_funcs = postproc_funcs
+        self.postproc_funcs_text = postproc_funcs_text
+        self.postproc_funcs_text_inverse = postproc_funcs_text_inverse
+        self.postproc_funcs_latex = postproc_funcs_latex
         self.filtered_params = []
 
 
@@ -118,7 +130,8 @@ class MITM:
     def _iter2hashtalbe(self, itr, itr_len, print_problematic=False):
         """Converts the (a, b) polynomials generator itr of an (estimated) length itr_len to a contfrac hashtable."""
         # filtered_postproc_funcs = [(i, f) for i,f in enumerate(self.postproc_funcs) if i in self.postproc_funcs_filter ]
-        filtered_postproc_funcs = itertools.compress(enumerate(self.postproc_funcs), self.postproc_funcs_filter)
+        # filtered_postproc_funcs = itertools.compress(enumerate(self.postproc_funcs), self.postproc_funcs_filter)
+        filtered_postproc_funcs = [(i, self.postproc_funcs[i]) for i in self.postproc_funcs_filter ]
 
         print('The following is a rough estimation only, and may be wrong to an order of 2-5 times.')
         for (cont_frac, pa, pb) in progressbar.progressbar(itr, max_value=itr_len):
@@ -172,7 +185,10 @@ class MITM:
             r = abs(enum_res_obj.get_val())
             if self.trunc_integer:
                 r -= int(r)
+            print(enum_res_obj)
             if r in self.dec_hashtable or -r in self.dec_hashtable:
+                # the filtered_params' elements structure is:
+                # ((a_poly, b_poly), lhs_eval_instance, post_func_ind, convergence_info)
                 filtered_params.extend([ (ab, lhs_evaluator(enum_res_obj), post_func_ind, None)
                                          for ab, post_func_ind in self.dec_hashtable[r] ])
         self.filtered_params = filtered_params
@@ -251,7 +267,7 @@ class MITM:
         valid_params = []
         for params in self.filtered_params:
             b = params[0][1]
-            roots = itertools.chain([ numpy.roots(b_p for b_p in b) ])
+            roots = itertools.chain([ numpy.roots(b_p) for b_p in b ])
             real_int_roots = [ (abs(r.imag) < 0.001) and (abs(r.real - round(r.real)) < 0.001)
                                for r in roots ]
             if not any(real_int_roots):
@@ -357,7 +373,7 @@ class MITM:
             # the postproc function.
             lhs = lhs_res_obj.get_latex_exp(target_name)
             rhs = latex_cont_frac(a, b)
-            lhs, rhs = POSTPROC_FUNCS_LATEX[postproc_funcs[post_func_ind]](lhs, rhs)
+            lhs, rhs = self.postproc_funcs_latex[postproc_funcs[post_func_ind]](lhs, rhs)
             eqn = r'{0} = {1}'.format(lhs, rhs)
 
             # Appends equation
@@ -375,7 +391,7 @@ class MITM:
             # the later specified postproc_func indices should be enough.
             csvwriter.writerow(['target_name', self.target_name])
             # Second row: columns titles for all the following results
-            csvwriter.writerow(['a poly [a_0, a_1, ...]', 'b poly  [b_0, b_1, ...]', 'postproc_func',
+            csvwriter.writerow(['a poly2sympoly [a_0, a_1, ...]', 'b poly2sympoly  [b_0, b_1, ...]', 'postproc_func',
                                 'LHS type', 'LHS params',
                                 'convergence type', 'convergence rate', 'postfunc(cont_frac)',
                                 'LHS val'])
@@ -391,7 +407,7 @@ class MITM:
                 # csvwriter.writerow([pa, pb, post_func_ind, lhs_type, lhs_res_obj.get_params(),
                 #                     convergence_info[0], convergence_info[1],
                 #                     postproc_res.to_eng_string(), lhs_res_obj.get_val().to_eng_string()])
-                csvwriter.writerow([pa, pb, POSTPROC_FUNCS[post_func_ind], lhs_type, lhs_res_obj.get_params(),
+                csvwriter.writerow([pa, pb, self.postproc_funcs[post_func_ind], lhs_type, lhs_res_obj.get_params(),
                                     convergence_info[0], convergence_info[1],
                                     postproc_res.to_eng_string(), lhs_res_obj.get_val().to_eng_string()])
             # Saves the results
@@ -399,7 +415,7 @@ class MITM:
                 csvbuffer.seek(0)
                 shutil.copyfileobj(csvbuffer, csvfile)
 
-    def build_contfrac_from_params(self, params, iterations=3000):
+    def build_contfrac_from_params(self, params, iterations=400):
         """Builds a continued fraction, post-processed value and an LHS object from params.
            params - (ab, lhs_res_obj, post_func_ind, convergence_info)
                     ab - [a_poly, b_poly] where a_poly/b_poly is of the format [poly1, poly2, ...] for these polynomials

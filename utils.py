@@ -14,6 +14,7 @@ class MeasureRuntime():
 
     def __init__(self):
         self.current_index = 0
+        self.previous_index = 0
         self.times = [0, 0]
         self.started = False
 
@@ -30,9 +31,9 @@ class MeasureRuntime():
     def measure_time(self):
         """MeasureS the time since the last call to measure_time (or start_measure)."""
         self.times[self.current_index] = time.time()
-        previous_index = self.current_index
+        self.previous_index = self.current_index
         self.current_index = (self.current_index + 1) % 2
-        return self.times[previous_index] - self.times[self.current_index]
+        return self.times[self.previous_index] - self.times[self.current_index]
 
     def get_total_runtime(self):
         """Returns the total runtime since start_measure was called."""
@@ -40,7 +41,7 @@ class MeasureRuntime():
 
     def get_last_measured_time(self):
         """Returns the last measured time."""
-        return self.times[previous_index] - self.times[self.current_index]
+        return self.times[self.previous_index] - self.times[self.current_index]
 
     def is_started(self):
         """Returns True if time is already being measured."""

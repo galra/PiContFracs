@@ -1,0 +1,2 @@
+postproc_funcs,"['lambda x: x**3', 'lambda x: safe_inverse(x**3)', 'lambda x: x**4', 'lambda x: safe_inverse(x**4)', 'lambda x: x**5', 'lambda x: safe_inverse(x**5)']",target_name,e
+"a poly2sympoly [a_0, a_1, ...]","b poly2sympoly  [b_0, b_1, ...]",procpost_func index,u,l,c,d,convergence type,convergence rate,postfunc(cont_frac),(u/pi+pi/l+c)/d

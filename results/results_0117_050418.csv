@@ -1,3 +1,0 @@
-postproc_funcs,"['safe_inverse', 'lambda x: x', 'lambda x: x**2']",target_name,pi
-"a poly [a_0, a_1, ...]","b poly  [b_0, b_1, ...]",procpost_func index,u,l,c,d,convergence type,convergence rate,postfunc(cont_frac),(u/pi+pi/l+c)/d
-"((-1, -2, 0),)","((0, 0, 1),)",0,0,-2,0,2,exp,"(Decimal('5.8272605951394884305822020761629026984372290256733'), Decimal('0.35726437084312770360148516203066730073389674632968'))",-0.78539816339744830961566084581987572104929234984375,-0.7853981633974483096156608458198757210492923498438
