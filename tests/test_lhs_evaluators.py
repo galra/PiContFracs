@@ -215,3 +215,9 @@ def test_rationalfunc_enumerator(numerator_coeffs, denominator_coeffs, force_num
     rationalfunc_generator = rationalfunc_enum.generator()
     assert { rationalfunc_eval.get_params()[:2]
              for rationalfunc_eval in rationalfunc_generator }.symmetric_difference(results) == set()
+
+
+def test_rationalfunc_canonalize():
+    rationalfunc_eval = lhs_evaluators.RationalFuncEvaluator([[0, 3*1, 3*2, 1], [0, 1, 2], 0], dec(5))
+    rationalfunc_eval.canonalize_params()
+    rationalfunc_eval.get_params() == ([0, 0, 1], [1, 2], 3)

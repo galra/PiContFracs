@@ -4,8 +4,8 @@ import enum_params
 import time
 import datetime
 from gen_consts import gen_pi_const, gen_e_const, gen_feig_consts, gen_euler_masch_const, gen_percolation_consts, \
-                            gen_zeta_consts, gen_phi_const
-from postprocfuncs import POSTPROC_FUNCS, EVALUATED_POSTPROC_FUNCS
+                            gen_zeta_consts, gen_phi_const, gen_apery_const
+from postprocfuncs import POSTPROC_FUNCS, EVALUATED_POSTPROC_FUNCS, INVERSE_POSTPROC_PAIRS, POSTPROC_FUNCS_LATEX
 import dill as pickle
 from latex import generate_latex
 import os
@@ -14,6 +14,10 @@ from configfile import CONFIG_PARAMS_TYPES as LEGAL_CONFIG_PARAMS
 import sys
 from functools import partial
 from utils import MeasureRuntime
+
+
+# decimal precision in use for calculations
+DECIMAL_PREC = 50
 
 
 class Parameters(dict):
@@ -32,14 +36,14 @@ class Parameters(dict):
 # rhs_polys_enumer = enum_params.BasicEnumPolyParams()
 # rhs_polys_enumer.polys_generator(range_a=[[6,7], [-1,0], [1,2]], range_b=[[5,6],[4,5],[-3,-2]])
 
-def main(configfile='config.ini'):
+def main(config_file='config.ini'):
     """Supported consts: pi, e, feig(0-3), euler_masch, percolation (0-1), zeta (2-20).
     For feig, i=0,1,2,3 is required.
     For percolation, i=0,1 is required.
     For zeta, i=2,3,4,...,19,20 is required."""
     # Load configuration file
     params = Parameters()
-    config_parser = ConfigParser(configfile=configfile)
+    config_parser = ConfigParser(configfile=config_file)
     config = config_parser.get_config()
     # Load variables from config
     for config_variable in LEGAL_CONFIG_PARAMS:
@@ -57,7 +61,8 @@ def main(configfile='config.ini'):
                          'euler_masch': gen_euler_masch_const,
                          'percolation': gen_percolation_const,
                          'zeta': gen_zeta_const,
-                         'phi': gen_phi_const}
+                         'phi': gen_phi_const,
+                         'apery': gen_apery_const}
     if params.const in consts_generators:
         target_generator = consts_generators[params.const]
     else:
@@ -78,16 +83,22 @@ def main(configfile='config.ini'):
               (params.hashtable_file, str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
         if params.hashtable_file_operation == 'expand':
             mitm.redefine_settings(target_generator=target_generator, target_name=params.const,
-                                   postproc_funcs=EVALUATED_POSTPROC_FUNCS,
                                    postproc_funcs_filter=params.postproc_funcs_filter,
-                                   ab_poly_class=params.ab_polys_type)
+                                   hashtable_prec=params.hashtable_precision, ab_poly_class=params.ab_polys_type,
+                                   ab_poly_special_params=params.ab_polys_special_params, prec=DECIMAL_PREC,
+                                   postproc_funcs=EVALUATED_POSTPROC_FUNCS, postproc_funcs_text=POSTPROC_FUNCS,
+                                   postproc_funcs_text_inverse=INVERSE_POSTPROC_PAIRS,
+                                   postproc_funcs_latex=POSTPROC_FUNCS_LATEX)
             print('Updated mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     elif params.hashtable_file_operation == 'generate':
         mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const,
-                                postproc_funcs=EVALUATED_POSTPROC_FUNCS,
                                 postproc_funcs_filter=params.postproc_funcs_filter,
-                                hashtable_prec=params.hashtable_precision,
-                                num_of_iterations=params.hashtable_num_of_iterations)
+                                hashtable_prec=params.hashtable_precision, ab_poly_class=params.ab_polys_type,
+                                ab_poly_special_params=params.ab_polys_special_params,
+                                num_of_iterations=params.hashtable_num_of_iterations, prec=DECIMAL_PREC,
+                                postproc_funcs=EVALUATED_POSTPROC_FUNCS, postproc_funcs_text=POSTPROC_FUNCS,
+                                postproc_funcs_text_inverse=INVERSE_POSTPROC_PAIRS,
+                                postproc_funcs_latex=POSTPROC_FUNCS_LATEX)
         print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     else:
         raise ValueError("hashtable_file_operation must be either 'use', 'expand' or 'generate'.")
@@ -113,21 +124,21 @@ def main(configfile='config.ini'):
     print('Finished fast filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     mitm.filter_clicks_by_approach_type(whitelist=['exp', 'super_exp'])
-    print('Finished full filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
-          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
-    mitm.refine_clicks(accuracy=10, num_of_iterations=300, print_clicks=False)
+    mitm.refine_clicks(accuracy=13, num_of_iterations=500, print_clicks=False)
     print('Finished refining clicks, 8 digits accuracy, 2000 iterations. Number of clicks left: %d. Runtime: %s ' %
+          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    print('Finished full filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     print('---REFINING CAN BE CANCELLED NOW---')
     try:
-        mitm.refine_clicks(accuracy=20, num_of_iterations=350, print_clicks=False)
+        mitm.refine_clicks(accuracy=20, num_of_iterations=2000, print_clicks=False)
         print('Finished refining clicks, 19 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
         mitm.filter_uniq_params()
         mitm.filter_uniq_params()
         print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
-        mitm.filter_integer_roots_numerators()
+        mitm.filter_pos_integer_roots_numerators()
         print('Finished filtering parameters with integer numerators roots. Number of unique parameters: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     except KeyboardInterrupt as e:

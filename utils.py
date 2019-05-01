@@ -2,6 +2,7 @@
 
 import time
 import sys
+from itertools import zip_longest
 
 class MeasureRuntime():
     """"Stopper" class for timing execution. Example:
@@ -166,3 +167,10 @@ class ProgressBar(enumerate):
         hours, minutes = divmod(minutes, 60)
         days, hours = divmod(hours, 24)
         return days, hours, minutes, seconds
+
+
+def grouper(iterable, n, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * n
+    return zip_longest(*args, fillvalue=fillvalue)

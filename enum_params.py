@@ -17,7 +17,7 @@ import numpy
 # The usage of progressbar adds about 1:05 minutes for a 25 bits enumeration
 import progressbar
 import itertools
-from utils import MathOperations
+from utils import MathOperations, grouper
 
 # from lhs_evaluators import ULCDEnumerator, ULCDEvaluator, RationalFuncEnumerator, RationalFuncEvaluator
 # converts #
@@ -134,37 +134,45 @@ class MITM:
         filtered_postproc_funcs = [(i, self.postproc_funcs[i]) for i in self.postproc_funcs_filter ]
 
         print('The following is a rough estimation only, and may be wrong to an order of 2-5 times.')
-        for (cont_frac, pa, pb) in progressbar.progressbar(itr, max_value=itr_len):
-            cur_cont_frac_val = cont_frac.get_result()
-            # is_normal = finite nonzero, not NaN, with exponent > Emin=-999999999999999999
-            if not cur_cont_frac_val.is_normal():
-                continue
-
-            # this tries to replace the previous 'problematic number' check, it haven't been tested yet
-            if not cur_cont_frac_val.is_normal():
-                if print_problematic:
-                    print('problematic number')
-                    print(cur_cont_frac_val)
-                continue
-            for post_func_ind, post_f in filtered_postproc_funcs:
-                # print(cur_cont_frac_val)
-                # Seems redundant - we're already enumerating only filtered functions
-                # if post_func_ind not in self.postproc_funcs_filter:
-                #     pass
-                try:
-                    k = post_f(cur_cont_frac_val)
-                except:
-                    print(k)
-                    raise
-                if not k.is_normal():
+        # This was an attempt to update the progressbar only once in 50 iterations, to speed things up.
+        # It turned out to slow things down :(
+        # for iter_group in progressbar.progressbar(grouper(itr, 50), max_value=int(itr_len/50), poll_interval=1):
+        #     for iter_element in iter_group:
+        #         if iter_element is None:
+        #             continue
+        #         cont_frac, pa, pb = iter_element
+        # progressbar updates up to once in a second
+        for cont_frac, pa, pb in progressbar.progressbar(itr, max_value=itr_len, poll_interval=1):
+                cur_cont_frac_val = cont_frac.get_result()
+                # is_normal = finite nonzero, not NaN, with exponent > Emin=-999999999999999999
+                if not cur_cont_frac_val.is_normal():
                     continue
-                k = abs(k)
-                if self.trunc_integer:
-                    k -= int(k)
-                if k not in self.dec_hashtable:
-                    self.dec_hashtable[k] = []
-                if ((pa, pb), post_func_ind) not in self.dec_hashtable[k]:
-                    self.dec_hashtable[k].append(((pa, pb), post_func_ind))
+
+                # this tries to replace the previous 'problematic number' check, it haven't been tested yet
+                if not cur_cont_frac_val.is_normal():
+                    if print_problematic:
+                        print('problematic number')
+                        print(cur_cont_frac_val)
+                    continue
+                for post_func_ind, post_f in filtered_postproc_funcs:
+                    # print(cur_cont_frac_val)
+                    # Seems redundant - we're already enumerating only filtered functions
+                    # if post_func_ind not in self.postproc_funcs_filter:
+                    #     pass
+                    try:
+                        k = post_f(cur_cont_frac_val)
+                    except:
+                        print(k)
+                        raise
+                    if not k.is_normal():
+                        continue
+                    k = abs(k)
+                    if self.trunc_integer:
+                        k -= int(k)
+                    if k not in self.dec_hashtable:
+                        self.dec_hashtable[k] = []
+                    if ((pa, pb), post_func_ind) not in self.dec_hashtable[k]:
+                        self.dec_hashtable[k].append(((pa, pb), post_func_ind))
         print()
 
     def find_clicks(self, lhs_classes, lhs_enumerator_params):
@@ -181,11 +189,11 @@ class MITM:
         lhs_enumerator = lhs_classes['enum'](lhs_enumerator_params, self.target_generator())
         lhs_evaluator = lhs_classes['eval']
         lhs_generator = lhs_enumerator.generator()
-        for enum_res_obj in progressbar.progressbar(lhs_generator, max_value=len(lhs_enumerator)):
+        # progressbar updates up to once in a second
+        for enum_res_obj in progressbar.progressbar(lhs_generator, max_value=len(lhs_enumerator), poll_interval=1):
             r = abs(enum_res_obj.get_val())
             if self.trunc_integer:
                 r -= int(r)
-            print(enum_res_obj)
             if r in self.dec_hashtable or -r in self.dec_hashtable:
                 # the filtered_params' elements structure is:
                 # ((a_poly, b_poly), lhs_eval_instance, post_func_ind, convergence_info)
@@ -203,9 +211,12 @@ class MITM:
         refined_params = []
         target_value = self.target_generator()
         # cont_frac = cont_fracs.ContFrac()
-        for ab, lhs_res_obj, post_func_ind, convergence_info in progressbar.progressbar(self.filtered_params):
+        # progressbar updates up to once in a second
+        for ab, lhs_res_obj, post_func_ind, convergence_info in progressbar.progressbar(self.filtered_params,
+                                                                                        poll_interval=1):
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
-            cont_frac.set_approach_type_and_params(convergence_info)
+            if convergence_info:
+                cont_frac.set_approach_type_and_params(convergence_info)
             # cont_frac.reinitialize(a_coeffs=ab[0], b_coeffs=ab[1])
             # This is a horrible hack, slowing down EVERYTHING. As a first step, this should be replaced by a small
             # correction to the convergence parameters. Maybe taking the upper/lower bound of confidence from the
@@ -250,7 +261,8 @@ class MITM:
         """
         unique_params_filtered = []
         # params = ab, lhs_res_obj, post_func_ind, convergence_info
-        for params in progressbar.progressbar(self.filtered_params):
+        # progressbar updates up to once in a second
+        for params in progressbar.progressbar(self.filtered_params, poll_interval=1):
             is_unique = True
             for uniqe_params in unique_params_filtered:
                 uniqe_lhs_res_obj= uniqe_params[1]
@@ -261,14 +273,14 @@ class MITM:
                 unique_params_filtered.append(params)
         self.filtered_params = unique_params_filtered
 
-    def filter_integer_roots_numerators(self):
-        """Filters out contfracs for which any of the b interlaces have an integer root. The roots are found numerically
-        and are considered real if Im(root) < 0.001 and integer if fractional_part(root) < 0.001"""
+    def filter_pos_integer_roots_numerators(self):
+        """Filters out contfracs for which any of the b interlaces have an integer positive root. The roots are found
+        numerically and are considered real if Im(root) < 0.001 and integer if fractional_part(root) < 0.001"""
         valid_params = []
         for params in self.filtered_params:
             b = params[0][1]
             roots = itertools.chain([ numpy.roots(b_p) for b_p in b ])
-            real_int_roots = [ (abs(r.imag) < 0.001) and (abs(r.real - round(r.real)) < 0.001)
+            real_int_roots = [ (abs(r.imag) < 0.001) and (r.real - r.real.round() < 0.001) and (r.real < 0.001)
                                for r in roots ]
             if not any(real_int_roots):
                 valid_params.append(params)
@@ -281,7 +293,7 @@ class MITM:
         # TODO: add either here or in filter_clicks_by_approach_type the discriminant test for exp. convergence
         params_list = self.filtered_params
         filtered_params_list = []
-        for cf_params in progressbar.progressbar(params_list):
+        for cf_params in progressbar.progressbar(params_list, poll_interval=1):
             ab, lhs_res_obj, post_func_ind, convergence_info = cf_params
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             if cont_frac.is_convergence_fast():
@@ -305,7 +317,7 @@ class MITM:
         params_list = self.filtered_params
 
         filtered_params_list = []
-        for cf_params in progressbar.progressbar(params_list):
+        for cf_params in progressbar.progressbar(params_list, poll_interval=1):
             ab, lhs_res_obj, post_func_ind, convergence_info = cf_params
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             try:

@@ -266,8 +266,9 @@ class SparseParameterEnumPolyParams(BasicEnumPolyParams, metaclass=SparseMetaCla
                  for p, mask in zip(coeffs_list, poly_masks) )
         return tuple(return_value)
 
-# apery a: 2 + n (2 + n) (4 + 3 n)
-# apery b: 2 n^5 (-1 + 2 n)
+# apery a: 2 + n (2 + n) (4 + 3 n) = 2 + 8 n + 10 n^2 + 3 n^3
+# apery b: 2 n^5 (-1 + 2 n) = -2 n^5 + 4 n^6
+# contfrac(a,b) = 5/(2apery)
 
 
 def define_polys_types():

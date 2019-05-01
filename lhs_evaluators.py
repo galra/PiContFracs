@@ -14,11 +14,11 @@ x_sym = sympy.symbols('x')
 
 def poly2sympoly(coeffs):
     """Converts a polynomial of the form [a_0, a_1, a_2, ...] to  'a_0+a_1*x+a_2*x^2+...' sympy.poly2sympoly object."""
-    return sympy.poly('+'.join('%d*x**%d' % (c, i) for i, c in enumerate(coeffs)), x_sym)
+    return sympy.poly('+'.join('%d*x**%d' % (c, i) for i, c in enumerate(coeffs)), x_sym, domain='ZZ')
 
 
 def sympoly2poly(sym_poly):
-    return sym_poly.all_coeffs()[::-1]
+    return [ int(i) for i in reversed(sym_poly.all_coeffs()) ]
 
 
 class LHSEvaluator:
@@ -350,13 +350,14 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         # find the reduced form, and check if p1/q1==p2/q2 in the reduced form up to a constant, and if b1==b2, a1==+-a2
         numerator1_p = ratio_func1_obj.numerator_p_symbolic
         denominator1_p = ratio_func1_obj.denominator_p_symbolic
-        quotient1, rem1 = divmod(numerator1_p, denominator1_p)
+        # auto=False keeps the polynoial over Z instead of over Q
+        quotient1, rem1 = numerator1_p.div(denominator1_p, auto=False)
         quotient1[0] = 0
         numerator2_p = ratio_func2_obj.numerator_p_symbolic
         denominator2_p = ratio_func2_obj.denominator_p_symbolic
         if is_inverse:
             numerator2_p, denominator2_p = denominator2_p, numerator2_p
-        quotient2, rem2 = divmod(numerator2_p, denominator2_p)
+        quotient2, rem2 = numerator2_p.div(denominator2_p, auto=False)
         quotient2[0] = 0
         # if ab1 == ab2 and f1/g1 = f2/g2 + C
         pa1, pb1 = ab1
@@ -418,19 +419,21 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
 
     def canonalize_params(self):
         """Turns the LHS parameters into canonical form by moving from p=q*k+r <=> p/q=k+r/q to the same expression,
-        with the free coefficient k_0 set to 0.
-        A reduction to (p/gcd(p, q)) / (q/gcd(p, q)) isn't dont because p, q are expected to be supplied in reduced form
-        in advance, and so RationalFuncEnumerator does."""
-        # TODO: fix the above documentation.
+        with the free coefficient k_0 set to k_0 - ceil(k_0)."""
+        from math import ceil
         numerator_p, denominator_p, added_int = self.params
-        quotient, remainder = divmod(self.numerator_p_symbolic, self.denominator_p_symbolic)
+        gcd = self.numerator_p_symbolic.gcd(self.denominator_p_symbolic)
+        numerator_p_symbolic = self.numerator_p_symbolic.div(gcd, auto=False)[0]
+        denominator_p_symbolic = self.denominator_p_symbolic.div(gcd, auto=False)[0]
+
+        quotient, remainder = numerator_p_symbolic.div(denominator_p_symbolic)
         # params[2] = added int
-        self.added_int += int(remainder[0])
-        remainder[0] = 0
+        self.added_int += ceil(quotient.all_coeffs()[-1])
+        quotient -= ceil(quotient.all_coeffs()[-1])
         # params[0] = numerator , params[1] = denominator
         self.old_numerator_denominator_p = (self.numerator_p, self.denominator_p)
-        self.numerator_p_symbolic = quotient * denominator_p + remainder
-        self.denominator_p_symbolic = self._de
+        self.numerator_p = sympoly2poly(quotient * denominator_p_symbolic + remainder)
+        self.denominator_p = sympoly2poly(denominator_p_symbolic)
         self.update_params()
 
     # Old methods for lists polynomials instead of sympy.Poly. Delete if it's not needed in a while.

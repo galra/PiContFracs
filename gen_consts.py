@@ -55,6 +55,8 @@ zeta_consts = {
 phi_const = dec(
     '1.61803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475')
 
+# Apery = zeta(3)
+apery_const = zeta_consts[3]
 
 def gen_pi_const(prec=None):
     if prec:
@@ -98,3 +100,8 @@ def gen_phi_const(prec=None):
     if prec:
         dc.prec = prec
     return phi_const * dec(1)
+
+def gen_apery_const(prec=None):
+    if prec:
+        dc.prec = prec
+    return apery_const * dec(1)
