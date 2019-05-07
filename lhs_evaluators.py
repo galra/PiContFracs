@@ -352,13 +352,13 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         denominator1_p = ratio_func1_obj.denominator_p_symbolic
         # auto=False keeps the polynoial over Z instead of over Q
         quotient1, rem1 = numerator1_p.div(denominator1_p, auto=False)
-        quotient1[0] = 0
+        quotient1 -= quotient1(0)
         numerator2_p = ratio_func2_obj.numerator_p_symbolic
         denominator2_p = ratio_func2_obj.denominator_p_symbolic
         if is_inverse:
             numerator2_p, denominator2_p = denominator2_p, numerator2_p
         quotient2, rem2 = numerator2_p.div(denominator2_p, auto=False)
-        quotient2[0] = 0
+        quotient2 -= quotient2(0)
         # if ab1 == ab2 and f1/g1 = f2/g2 + C
         pa1, pb1 = ab1
         pa2, pb2 = ab2

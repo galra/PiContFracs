@@ -6,7 +6,6 @@ with the continued fractions up to an arbitrary decimal precision."""
 import cont_fracs
 from decimal_hashtable import DecimalHashTable
 from decimal import Decimal as dec
-from decimal import DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation
 from gen_consts import gen_pi_const
 import csv
 from latex import latex_cont_frac
@@ -67,7 +66,7 @@ class MITM:
         prec - the decimal precision to be used during calculations. This of course bounds all other used precisions."""
         self.rhs_polys_enumer = ab_poly_class(num_of_iterations=num_of_iterations,
                                               enum_only_exp_conv=enum_only_exp_conv, avoid_int_roots=True,
-                                              should_gen_contfrac=False, avoid_zero_b=True, prec=prec,
+                                              should_gen_contfrac=True, avoid_zero_b=True, prec=prec,
                                               special_params=ab_poly_special_params)
         self._polys_enumer_num_of_iterations = num_of_iterations
         self._polys_enumer_enum_only_exp_conv = enum_only_exp_conv
@@ -101,7 +100,7 @@ class MITM:
             self.rhs_polys_enumer = ab_poly_class(prec=self.prec,
                                                   enum_only_exp_conv=self._polys_enumer_enum_only_exp_conv,
                                                   avoid_int_roots=True,
-                                                  should_gen_contfrac=False,
+                                                  should_gen_contfrac=True,
                                                   num_of_iterations=self._polys_enumer_num_of_iterations,
                                                   threshold=None, special_params=ab_poly_special_params)
 
@@ -125,10 +124,7 @@ class MITM:
          For each result continued fraction all the selected postproc functions will be applied on, and these results
          will be saved to the hashtable."""
         # pg - polynomial generator. The pg_len is only an (over)estimated one.
-        import time
-        t = time.time()
         pg, pg_len = self.rhs_polys_enumer.polys_generator(range_a=range_a, range_b=range_b)
-        print('Took %f seconds to create pg, pg_len' % (time.time()-t))
         self._iter2hashtalbe(pg, pg_len)
 
     def _iter2hashtalbe(self, itr, itr_len, print_problematic=False):
@@ -146,40 +142,37 @@ class MITM:
         #             continue
         #         cont_frac, pa, pb = iter_element
         # progressbar updates up to once in a second
-        for pa, pb in progressbar.progressbar(itr, max_value=itr_len, poll_interval=1):
-            try:
-                cur_cont_frac_val = cont_fracs.eval_dec_contfrac_by_polys(pa, pb, self._polys_enumer_num_of_iterations)
-            except (DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation):
-                continue
-            # is_normal = finite nonzero, not NaN, with exponent > Emin=-999999999999999999
-            if not cur_cont_frac_val.is_normal():
-                continue
-
-            # this tries to replace the previous 'problematic number' check, it haven't been tested yet
-            if not cur_cont_frac_val.is_normal():
-                if print_problematic:
-                    print('problematic number')
-                    print(cur_cont_frac_val)
-                continue
-            for post_func_ind, post_f in filtered_postproc_funcs:
-                # print(cur_cont_frac_val)
-                # Seems redundant - we're already enumerating only filtered functions
-                # if post_func_ind not in self.postproc_funcs_filter:
-                #     pass
-                try:
-                    k = post_f(cur_cont_frac_val)
-                except:
-                    print(k)
-                    raise
-                if not k.is_normal():
+        for cont_frac, pa, pb in progressbar.progressbar(itr, max_value=itr_len, poll_interval=1):
+                cur_cont_frac_val = cont_frac.get_result()
+                # is_normal = finite nonzero, not NaN, with exponent > Emin=-999999999999999999
+                if not cur_cont_frac_val.is_normal():
                     continue
-                k = abs(k)
-                if self.trunc_integer:
-                    k -= int(k)
-                if k not in self.dec_hashtable:
-                    self.dec_hashtable[k] = []
-                if ((pa, pb), post_func_ind) not in self.dec_hashtable[k]:
-                    self.dec_hashtable[k].append(((pa, pb), post_func_ind))
+
+                # this tries to replace the previous 'problematic number' check, it haven't been tested yet
+                if not cur_cont_frac_val.is_normal():
+                    if print_problematic:
+                        print('problematic number')
+                        print(cur_cont_frac_val)
+                    continue
+                for post_func_ind, post_f in filtered_postproc_funcs:
+                    # print(cur_cont_frac_val)
+                    # Seems redundant - we're already enumerating only filtered functions
+                    # if post_func_ind not in self.postproc_funcs_filter:
+                    #     pass
+                    try:
+                        k = post_f(cur_cont_frac_val)
+                    except:
+                        print(k)
+                        raise
+                    if not k.is_normal():
+                        continue
+                    k = abs(k)
+                    if self.trunc_integer:
+                        k -= int(k)
+                    if k not in self.dec_hashtable:
+                        self.dec_hashtable[k] = []
+                    if ((pa, pb), post_func_ind) not in self.dec_hashtable[k]:
+                        self.dec_hashtable[k].append(((pa, pb), post_func_ind))
         print()
 
     def find_clicks(self, lhs_classes, lhs_enumerator_params):
@@ -286,8 +279,8 @@ class MITM:
         valid_params = []
         for params in self.filtered_params:
             b = params[0][1]
-            roots = itertools.chain([ r for b_p in b for r in numpy.roots(b_p[::-1]) ])
-            real_int_roots = [ ((abs(r.imag) < 0.001) and (r.real - r.real.round() < 0.001) and (r.real > 0.001))
+            roots = itertools.chain([ numpy.roots(b_p) for b_p in b ])
+            real_int_roots = [ (abs(r.imag) < 0.001) and (r.real - r.real.round() < 0.001) and (r.real < 0.001)
                                for r in roots ]
             if not any(real_int_roots):
                 valid_params.append(params)

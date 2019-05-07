@@ -386,6 +386,15 @@ def eval_contfrac(a, b=None):
         res = a_val + b_val / res
     return res
 
+
 def eval_contfrac_by_polys(a, b, num_of_iters):
+
     return eval_contfrac([ MathOperations.subs_in_polynom(a[i%len(a)], i) for i in range(num_of_iters)],
                          [ MathOperations.subs_in_polynom(b[i%len(b)], i) for i in range(1,num_of_iters)])
+
+
+def eval_dec_contfrac_by_polys(a, b, num_of_iters):
+    a = [ [ dec(i) for i in p ] for p in a ]
+    b = [ [ dec(i) for i in p ] for p in b ]
+    return eval_contfrac([ MathOperations.subs_in_polynom(a[i % len(a)], i) for i in range(num_of_iters)],
+                         [ MathOperations.subs_in_polynom(b[i % len(b)], i) for i in range(1, num_of_iters)])
