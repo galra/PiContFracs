@@ -1,3 +1,6 @@
+"""This is a legacy file, and left here solely to be rewritten if needed. If one needs to convert csv to pdfs, load old
+ results from a csv to ContFrac objects etc, updating this file may save some effort."""
+
 import gen_consts
 import cont_fracs
 import csv

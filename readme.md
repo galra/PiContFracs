@@ -4,8 +4,15 @@ Generation of continuous fractions identities.
 
 ## Installation
 
-Simply install everything on the requirements file.
+1) git lfs (large files storage) is used. Download it from here:
+https://git-lfs.github.com/
+install it. and from the repository directory run:
+git lfs install
+git lfs track "hashtable_*.pkl"
+
+2) Install everything on the requirements file.
 pip install -r requirements.txt
+
 
 ## Running
 
@@ -35,8 +42,8 @@ To do this, we enumerate over the coefficients of a,b and those of the rational 
 They're all integers.
  We actually don't compare between the LHS to a continued fraction, but to a continued fraction after we applied some
 function to it, e.g. contfrac^2, sqrt(contfrac), 1/contfrac etc.
- In order to enhance the algorithm's complexity, we first enumerate over the parameters of the LHS, saving the results
-to a hashtable (a python 'dict'), and the we enumerate over the LHS and look for a match in the table. This is a TMTO
+ In order to enhance the algorithm's complexity, we first enumerate over the parameters of the RHS, saving the results
+to a hashtable (a python 'dict'), and then we enumerate over the LHS and look for a match in the table. This is a TMTO
 (time-memory trade off), it's called MITM (meet in the middle), you can look it up if it's not clear.
  We first find matches, then filter redundant results (discussed later on), filter only continued fractions the converge
 fastly, find how fast are they converging, and then we know how many iterations (to what level of "nested fractions") we
@@ -52,29 +59,36 @@ should calculate to get the desired precision. We calculate them to that precisi
 
 ### Code structure
 
-The code is made up of these files (some of the names aren't very indicative, as these are results of an ongoing
+The code is made up of these files (some of the names may not be very indicative, as these are results of an ongoing
 process...):
 * main - this file is combining everything together, you should begin with it to understand more or less what's going on.
 * configfile - loads and parses the configuration file
 * latex - generates a latex file for the results
-* gen_real_consts - this module holds all the constants we're dealing with (pi, e etc).
+* gen_consts - this module holds all the constants we're dealing with (pi, e etc).
 * enum_params - does all the enumeration. Creates the hashtable, then looking for LHS matches (AKA clicks)
-* basic_enum_params - generates the parameters for the LHS and RHS which to be treated later as a polynomial
-  coefficients (usually).
+* enum_poly_params - generates the parameters for the polynomials, either for the RHS's a,b or for the LHS rationl
+  function polynomials. Several types of polynomials enumeration that were found to be useful in different cases are
+  supported,  such as "regular": a_0+a_1*x+...+a_n*x^n, "indexed": a_0*x^n+a_1*(x+1)^n+...+a_n*(x+n)^n etc.
 * cont_fracs - generates continued fractions.
-    * basic_algo - a more basic class which the ContFrac inherits from, for the case we'll have other similar
-      objects for the RHS in the future. a "virtual class".
+    * basic_representation_types - a more basic class which the ContFrac inherits from, for the case we'll have other 
+      similar objects for the RHS in the future. a "virtual class".
 * decimal_hashtable - implements the customized hashtable for our purposes
-* postprocfuncs - contains all the function that we apply on the continued fraction before saving the results to
+* postprocfuncs - contains all the function that we apply on the continued fraction before saving the results to the
+  hashtable.
 * lhs_evaluators - the LHS function is a rational function? ulcd? Maybe we want something else? This file
   implements these functions. As long as the interface is standard, any function can be implemented here and be
   used (almost) natively by the rest of the code. "Almost" because the class type should be defined by name, and
   added to the configfile to be supported and parsed correctly.
 the hashtable
+* utils - a few utilities that aren't specific to any of the above files, such as a time measuring class (similar to
+  matlab's tic toc), gcd implemenation (for types that don't have built-in gcd implemenation), substitution in
+  polynomials etc.
+* tests directory - contains tests to many of the methods. They are written for pytest and can be ran (for example) by:
+  py.test -l -v <test_file>
 
 ### Other
 
 * You can ignore for now from: run_distributed_configs, join_hashtables, distribute_params. These are patchy (yet
 working) approaches to distribution and parallelization.
-* The rest of the fields are mostly legacy and are likely to be oudated and not to support the current files formats
-etc.
+* process_and_compare - a legacy file. If one needs to convert csv to pdfs, load old results from a csv to ContFrac
+  objects etc, updating this file may be more effortless.
