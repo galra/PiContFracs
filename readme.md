@@ -38,7 +38,7 @@ a(0)+b(1)/(a(1)+b(2)/...))
 where a,b are polynomials with integer coefficients. This is the RHS.
  On the LHS we have a function of some constant, either rational or ULCD. A ULCD function is of the type
 f(const) = (u/const + const/l + c)/d
-while a rational function is the ratio of to polynomials.
+while a rational function is the ratio of two polynomials.
  We seek for a match between some LHS function on a constant to a continued fraction.
 To do this, we enumerate over the coefficients of a,b and those of the rational func on the LHS/the ulcd parameters.
 They're all integers.
@@ -46,7 +46,7 @@ They're all integers.
 function to it, e.g. contfrac^2, sqrt(contfrac), 1/contfrac etc.
  In order to enhance the algorithm's complexity, we first enumerate over the parameters of the RHS, saving the results
 to a hashtable (a python 'dict'), and then we enumerate over the LHS and look for a match in the table. This is a TMTO
-(time-memory trade off), it's called MITM (meet in the middle), you can look it up if it's not clear.
+(time-memory trade opff), it's called MITM (meet in the middle), you can look it up if it's not clear.
  We first find matches, then filter redundant results (discussed later on), filter only continued fractions the converge
 fastly, find how fast are they converging, and then we know how many iterations (to what level of "nested fractions") we
 should calculate to get the desired precision. We calculate them to that precision, and filter again.
