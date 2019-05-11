@@ -4,14 +4,16 @@ Generation of continuous fractions identities.
 
 ## Installation
 
-1) git lfs (large files storage) is used. Download it from here:
-https://git-lfs.github.com/
-install it. and from the repository directory run:
+1) git lfs (large files storage) is used. Download and install it from [here](https://git-lfs.github.com/), and from the repository directory run:
+```
 git lfs install
 git lfs track "hashtable_*.pkl"
+```
 
-2) Install everything on the requirements file.
+2) Install everything on the requirements file:
+```
 pip install -r requirements.txt
+```
 
 
 ## Running
