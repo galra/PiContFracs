@@ -6,6 +6,7 @@ with the continued fractions up to an arbitrary decimal precision."""
 import cont_fracs
 from decimal_hashtable import DecimalHashTable
 from decimal import Decimal as dec
+import decimal
 from decimal import DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation
 from gen_consts import gen_pi_const
 import csv
@@ -145,8 +146,7 @@ class MITM:
         #         if iter_element is None:
         #             continue
         #         cont_frac, pa, pb = iter_element
-        # progressbar updates up to once in a second
-        for pa, pb in progressbar.progressbar(itr, max_value=itr_len, poll_interval=1):
+        for pa, pb in progressbar.progressbar(itr, max_value=itr_len):
             try:
                 cur_cont_frac_val = cont_fracs.eval_dec_contfrac_by_polys(pa, pb, self._polys_enumer_num_of_iterations)
             except (DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation):
@@ -196,31 +196,44 @@ class MITM:
         lhs_enumerator = lhs_classes['enum'](lhs_enumerator_params, self.target_generator())
         lhs_evaluator = lhs_classes['eval']
         lhs_generator = lhs_enumerator.generator()
-        # progressbar updates up to once in a second
-        for enum_res_obj in progressbar.progressbar(lhs_generator, max_value=len(lhs_enumerator), poll_interval=1):
+        for enum_res_obj in progressbar.progressbar(lhs_generator, max_value=len(lhs_enumerator)):
             r = abs(enum_res_obj.get_val())
             if self.trunc_integer:
                 r -= int(r)
-            if r in self.dec_hashtable or -r in self.dec_hashtable:
+            if r in self.dec_hashtable:
+                # if the lhs is degenerate (i.e. (3x+12x^4) / (x+4x^4)) then skip.
+                # this is checked here, because this check may require a major additional runtime, and checking it only
+                # for passing clicks is saving time (both in compare to validate in advance or not validating at all).
+                if enum_res_obj.is_degenerate():
+                    continue
+                if r in self.dec_hashtable:
+                    signed_r = r
+                else:
+                    signed_r = -r
                 # the filtered_params' elements structure is:
                 # ((a_poly, b_poly), lhs_eval_instance, post_func_ind, convergence_info)
                 filtered_params.extend([ (ab, lhs_evaluator(enum_res_obj), post_func_ind, None)
-                                         for ab, post_func_ind in self.dec_hashtable[r] ])
+                                         for ab, post_func_ind in self.dec_hashtable[signed_r] ])
         self.filtered_params = filtered_params
 
-    def refine_clicks(self, accuracy=10, num_of_iterations=3000, print_clicks=False):
+    def refine_clicks_with_const_num_of_iters(self, accuracy=10, num_of_iterations=3000, print_clicks=False):
         """Filters the clicks and refines them by validation up to an arbitrary accuracy.
-        MUST be called only AFTER filter_clicks_by_approach_type.
         Parameters:
             accuracy - how many digital digits to compare (digits only. +1 is added automatically for the decimal dots).
-            num_of_iterations -
+            num_of_iterations - number of iterations (depth of the contfrac to calculate)
             print_click - print every new click that passes. If you know what's good, you'll probably keep it False."""
-        refined_params = []
-        target_value = self.target_generator()
-        # cont_frac = cont_fracs.ContFrac()
-        # progressbar updates up to once in a second
-        for ab, lhs_res_obj, post_func_ind, convergence_info in progressbar.progressbar(self.filtered_params,
-                                                                                        poll_interval=1):
+        contfrac_evaluator = lambda ab, accuracy, convergence_info: \
+            cont_fracs.eval_dec_contfrac_by_polys(ab[0], ab[1], num_of_iterations)
+        self._refine_clicks(accuracy=accuracy, contfrac_evaluator=contfrac_evaluator, print_clicks=print_clicks)
+
+    def refine_clicks_with_convergence_info(self, accuracy=10, num_of_iterations=3000, print_clicks=False):
+        """Filters the clicks and refines them by validation up to an arbitrary accuracy.
+        Should be called only after filter_clicks_by_approach_type.
+        Parameters:
+            accuracy - how many digital digits to compare (digits only. +1 is added automatically for the decimal dots).
+            num_of_iterations - upper bound for the number of iterations
+            print_click - print every new click that passes. If you know what's good, you'll probably keep it False."""
+        def evaluate_contfrac(ab, accuracy, convergence_info):
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             if convergence_info:
                 cont_frac.set_approach_type_and_params(convergence_info)
@@ -230,7 +243,25 @@ class MITM:
             # fitting results.
             # TODO: fix accoridng to the above comment.
             cont_frac.gen_iterations(num_of_iterations, dec('1E-%d' % (accuracy+100)))
-            signed_rhs = self.postproc_funcs[post_func_ind](cont_frac.get_result())
+            return cont_frac.get_result()
+        self._refine_clicks(accuracy=accuracy, contfrac_evaluator=evaluate_contfrac, print_clicks=print_clicks)
+
+    def _refine_clicks(self, accuracy, contfrac_evaluator, print_clicks):
+        """Filters the clicks and refines them by validation up to an arbitrary accuracy.
+        Parameters:
+            accuracy - how many digital digits to compare (digits only. +1 is added automatically for the decimal dots).
+            contfrac_evaluator - a function the takes ab(=[a, b]), accuracy, convergence_info and return the appropriate
+                                 value of the continued fraction.
+            print_click - print every new click that passes. If you know what's good, you'll probably keep it False."""
+        refined_params = []
+        target_value = self.target_generator()
+        # cont_frac = cont_fracs.ContFrac()
+        for ab, lhs_res_obj, post_func_ind, convergence_info in progressbar.progressbar(self.filtered_params):
+            try:
+                signed_rhs = self.postproc_funcs[post_func_ind](contfrac_evaluator(ab, accuracy, convergence_info))
+            except decimal.DivisionByZero:
+                print('DivisionByZero exception', ab)
+                continue
             rhs = abs(signed_rhs)
             if not rhs.is_normal():
                 continue
@@ -268,8 +299,7 @@ class MITM:
         """
         unique_params_filtered = []
         # params = ab, lhs_res_obj, post_func_ind, convergence_info
-        # progressbar updates up to once in a second
-        for params in progressbar.progressbar(self.filtered_params, poll_interval=1):
+        for params in progressbar.progressbar(self.filtered_params):
             is_unique = True
             for uniqe_params in unique_params_filtered:
                 uniqe_lhs_res_obj= uniqe_params[1]
@@ -300,7 +330,7 @@ class MITM:
         # TODO: add either here or in filter_clicks_by_approach_type the discriminant test for exp. convergence
         params_list = self.filtered_params
         filtered_params_list = []
-        for cf_params in progressbar.progressbar(params_list, poll_interval=1):
+        for cf_params in progressbar.progressbar(params_list):
             ab, lhs_res_obj, post_func_ind, convergence_info = cf_params
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             if cont_frac.is_convergence_fast():
@@ -324,7 +354,7 @@ class MITM:
         params_list = self.filtered_params
 
         filtered_params_list = []
-        for cf_params in progressbar.progressbar(params_list, poll_interval=1):
+        for cf_params in progressbar.progressbar(params_list):
             ab, lhs_res_obj, post_func_ind, convergence_info = cf_params
             cont_frac = cont_fracs.ContFrac(a_coeffs=ab[0], b_coeffs=ab[1])
             try:

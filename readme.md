@@ -84,7 +84,7 @@ the hashtable
   matlab's tic toc), gcd implemenation (for types that don't have built-in gcd implemenation), substitution in
   polynomials etc.
 * tests directory - contains tests to many of the methods. They are written for pytest and can be ran (for example) by:
-  py.test -l -v <test_file>
+  py.test -vv tests
 
 ### Other
 

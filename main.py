@@ -69,13 +69,13 @@ def main(config_file='config.ini'):
         raise ValueError('Invalid const.')
 
     measure_runtime = MeasureRuntime()
-    measure_runtime.start_measure()
     if params.const == 'feig':
         params.const = 'feig, %d' % i
     if params.const == 'percolation':
         params.const = 'percolation, %d' % i
 
     # Either loads the hashtable from previous runs or loads it
+    measure_runtime.start_measure()
     if params.hashtable_file_operation in ['use', 'expand']:
         with open(params.hashtable_file, 'rb') as input_file:
             mitm = pickle.load(input_file)
@@ -89,7 +89,8 @@ def main(config_file='config.ini'):
                                    postproc_funcs=EVALUATED_POSTPROC_FUNCS, postproc_funcs_text=POSTPROC_FUNCS,
                                    postproc_funcs_text_inverse=INVERSE_POSTPROC_PAIRS,
                                    postproc_funcs_latex=POSTPROC_FUNCS_LATEX)
-            print('Updated mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+            print('Updated mitm object settings. Runtime: %s ' %
+                  str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     elif params.hashtable_file_operation == 'generate':
         mitm = enum_params.MITM(target_generator=target_generator, target_name=params.const,
                                 postproc_funcs_filter=params.postproc_funcs_filter,
@@ -99,24 +100,31 @@ def main(config_file='config.ini'):
                                 postproc_funcs=EVALUATED_POSTPROC_FUNCS, postproc_funcs_text=POSTPROC_FUNCS,
                                 postproc_funcs_text_inverse=INVERSE_POSTPROC_PAIRS,
                                 postproc_funcs_latex=POSTPROC_FUNCS_LATEX)
-        print('Finished creating mitm object. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+        print('Finished creating mitm object. Runtime: %s ' %
+              str(datetime.timedelta(seconds=measure_runtime.measure_time())))
     else:
         raise ValueError("hashtable_file_operation must be either 'use', 'expand' or 'generate'.")
     if params.hashtable_file_operation in ['expand', 'generate']:
         mitm.build_hashtable(range_a=params.a_coeffs_range, range_b=params.b_coeffs_range)
-        print('Finished building hashtable. Runtime: %s ' % str(datetime.timedelta(seconds=measure_runtime.measure_time())))
+        print('Finished building hashtable. Runtime: %s ' %
+              str(datetime.timedelta(seconds=measure_runtime.measure_time())))
         mitm.dec_hashtable['parameters'] = {'target_generator': target_generator, 'target_name': params.const,
                                             'POSTPROC_FUNCS': EVALUATED_POSTPROC_FUNCS}
         with open(params.hashtable_file, 'wb') as output_file:
             pickle.dump(mitm, output_file, protocol=pickle.HIGHEST_PROTOCOL)
-        print('Stored hashtable as %s. Runtime: %s ' % (params.hashtable_file,
-                                                        str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
+        print('Stored hashtable as %s. Runtime: %s' % (params.hashtable_file,
+                                                       str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     if params.gen_hashtable_only:
         return
     mitm.find_clicks(params.lhs_type, params.lhs_params)
     print('Finished finding clicks. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     mitm.reset_hashtable()
+    mitm.refine_clicks_with_const_num_of_iters(accuracy=params.first_filtering_precision,
+                                               num_of_iterations=params.first_filtering_num_of_iterations)
+    print('Finished refining clicks, %d digits accuracy, %d iterations. Number of clicks left: %d. Runtime: %s ' %
+          (params.first_filtering_precision, params.first_filtering_num_of_iterations, len(mitm.get_filtered_params()),
+           str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     mitm.filter_uniq_params()
     print('Finished filtering unique. Number of clicks: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
@@ -124,16 +132,22 @@ def main(config_file='config.ini'):
     print('Finished fast filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     mitm.filter_clicks_by_approach_type(whitelist=['exp', 'super_exp'])
-    mitm.refine_clicks(accuracy=13, num_of_iterations=500, print_clicks=False)
-    print('Finished refining clicks, 8 digits accuracy, 2000 iterations. Number of clicks left: %d. Runtime: %s ' %
-          (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+    mitm.refine_clicks_with_convergence_info(accuracy=params.second_filtering_precision,
+                                             num_of_iterations=params.second_filtering_max_num_of_iterations,
+                                             print_clicks=False)
+    print('Finished refining clicks, %d digits accuracy, %d iterations. Number of clicks left: %d. Runtime: %s ' %
+          (params.second_filtering_precision, params.second_filtering_max_num_of_iterations,
+           len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     print('Finished full filtering exponential convergence. Number of clicks left: %d. Runtime: %s ' %
           (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
     print('---REFINING CAN BE CANCELLED NOW---')
     try:
-        mitm.refine_clicks(accuracy=20, num_of_iterations=2000, print_clicks=False)
-        print('Finished refining clicks, 19 digits accuracy, 40000 iterations. Number of clicks left: %d. Runtime: %s ' %
-              (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
+        mitm.refine_clicks_with_convergence_info(accuracy=params.third_filtering_precision,
+                                                 num_of_iterations=params.third_filtering_max_num_of_iterations,
+                                                 print_clicks=False)
+        print('Finished refining clicks, %d digits accuracy, %d iterations. Number of clicks left: %d. Runtime: %s ' %
+              (params.third_filtering_precision, params.third_filtering_max_num_of_iterations,
+               len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time())) ))
         mitm.filter_uniq_params()
         mitm.filter_uniq_params()
         print('Finished filtering unique parameters. Number of unique parameters: %d. Runtime: %s ' %
@@ -142,7 +156,7 @@ def main(config_file='config.ini'):
         print('Finished filtering parameters with integer numerators roots. Number of unique parameters: %d. Runtime: %s ' %
               (len(mitm.get_filtered_params()), str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
     except KeyboardInterrupt as e:
-        print('Canceled refining clicks, 14 digits accuracy, 40000 iterations. Runtime: %s ' %
+        print('Canceled refining clicks. Runtime: %s ' %
               (str(datetime.timedelta(seconds=measure_runtime.measure_time()))))
 
     if not os.path.isdir('results'):

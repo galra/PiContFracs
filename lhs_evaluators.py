@@ -76,6 +76,9 @@ class LHSEvaluator:
         """Turns the LHS parameters into canonical form."""
         pass
 
+    def is_degenerate(self):
+        return False
+
 
 class LHSEnumerator:
     """Enumerates over different LHSs and create their instances as LHSEvaluator."""
@@ -185,6 +188,10 @@ class ULCDEvaluator(LHSEvaluator, metaclass=ULCDMetaClass):
 
         return latex_exp
 
+    def is_degenerate(self):
+        u, l, c, d = self.params
+        return (abs(u) == 1) and u == -l
+
 
 class ULCDEnumerator(LHSEnumerator, metaclass=ULCDMetaClass):
     """Enumerates over ULCD LHSs. See help for ULCDEvaluator for more info about ULCD."""
@@ -252,6 +259,7 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         super().__init__(lhs_evaluator_params, target_constant)
         self._should_update_numerator_p_symbolic = True
         self._should_update_denominator_p_symbolic = True
+        self._is_canonalized = False
 
     def reinit_params(self, params):
         """Initializes and calculates the value.
@@ -260,6 +268,9 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
                      and the polynomials are of the format: [a_0, a_1, a_2, ...] <=> a_0 + a_1*x + a_2*x^2 + ..."""
         # WARNING: as far as I see, only the first two arguments will be fed to params from the config file. Bug?
         self.numerator_p, self.denominator_p, self.added_int = params
+        self._should_update_numerator_p_symbolic = True
+        self._should_update_denominator_p_symbolic = True
+        self._is_canonalized = False
         if not isinstance(self.added_int, int):
             raise TypeError('added_int has to be an integer')
         self._calc_val()
@@ -305,6 +316,7 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         """Flips the sign of the LHS by changing the parameters appropriately."""
         self.denominator_p = [ -1*c for c in self.denominator_p ]
         self._should_update_denominator_p_symbolic = True
+        self._is_canonalized = False
         self.added_int *= -1
         self.update_params()
         self._calc_val()
@@ -320,6 +332,7 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         self.params = (self.numerator_p, self.denominator_p, self.added_int)
         self._should_update_numerator_p_symbolic = True
         self._should_update_denominator_p_symbolic = True
+        self._is_canonalized = False
         self._calc_val()
 
     @staticmethod
@@ -420,6 +433,8 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
     def canonalize_params(self):
         """Turns the LHS parameters into canonical form by moving from p=q*k+r <=> p/q=k+r/q to the same expression,
         with the free coefficient k_0 set to k_0 - ceil(k_0)."""
+        if self._is_canonalized:
+            return
         from math import ceil
         numerator_p, denominator_p, added_int = self.params
         gcd = self.numerator_p_symbolic.gcd(self.denominator_p_symbolic)
@@ -434,7 +449,15 @@ class RationalFuncEvaluator(LHSEvaluator, metaclass=RationalFuncMetaClass):
         self.old_numerator_denominator_p = (self.numerator_p, self.denominator_p)
         self.numerator_p = sympoly2poly(quotient * denominator_p_symbolic + remainder)
         self.denominator_p = sympoly2poly(denominator_p_symbolic)
+        self._is_canonalized = True
         self.update_params()
+
+    def is_degenerate(self):
+        self.canonalize_params()
+        if ((len(self.numerator_p) == 1) and (len(self.denominator_p) == 1)) or \
+           (len(self.numerator_p) == 0) or self.numerator_p == [0]:
+            return True
+        return False
 
     # Old methods for lists polynomials instead of sympy.Poly. Delete if it's not needed in a while.
     # 30/01/2019

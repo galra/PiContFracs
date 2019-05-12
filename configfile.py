@@ -194,4 +194,10 @@ CONFIG_PARAMS_TYPES = {'const': ConfigParser.string_parameter_parser,
                        'hashtable_file_operation': ConfigParser.string_parameter_parser,
                        'hashtable_file': ConfigParser.string_parameter_parser,
                        'hashtable_num_of_iterations': int,
-                       'hashtable_precision': int}
+                       'hashtable_precision': int,
+                       'first_filtering_num_of_iterations': int,
+                       'first_filtering_precision': int,
+                       'second_filtering_max_num_of_iterations': int,
+                       'second_filtering_precision': int,
+                       'third_filtering_max_num_of_iterations': int,
+                       'third_filtering_precision': int}

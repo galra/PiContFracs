@@ -148,7 +148,7 @@ class BasicEnumPolyParams(metaclass=NormalMetaClass):
             return True
         elif len(poly) == 1:
             return False
-        elif len(poly) == 2 and (poly[0] / poly[1]).is_integer() and (poly[0] > 0) == (poly[1] > 0):
+        elif len(poly) == 2 and (poly[0] / poly[1]).is_integer() and (poly[0] > 0) != (poly[1] > 0):
             return True
         elif len(poly) == 3:
             discrim = (poly[1]**2-4*poly[0]*poly[2])

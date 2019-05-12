@@ -9,16 +9,7 @@ def basic_poly():
                                                 avoid_zero_b=True, threshold=None, prec=80)
 
 
-@pytest.mark.parametrize('poly2sympoly,should_invert', [
-    ([0, 0, 10, 5, 0, 0], 0),
-    ([10, 5], 0),
-    ([-1, 3, 1], 1)
-])
-def test_basic_does_have_integer_roots(basic_poly, poly, should_invert):
-    assert basic_poly._does_have_integer_roots(poly) ^ should_invert
-
-
-@pytest.mark.parametrize('poly2sympoly,should_invert', [
+@pytest.mark.parametrize('poly,should_invert', [
     ([0, 0, 10, 5, 0, 0], 0),
     ([10, 5], 0),
     ([-1, 3, 1], 1)
@@ -31,7 +22,7 @@ def test_basic_poly_degree(basic_poly):
     assert basic_poly._polynom_degree([0, 1, 1, 0, 0]) == 2
 
 
-@pytest.mark.parametrize('poly2sympoly,factored_poly', [
+@pytest.mark.parametrize('poly,factored_poly', [
     ([0, 0, 10, 5, 0, 0], [10, 5]),
     ([0, 0, 0, 0], []),
 ])

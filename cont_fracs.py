@@ -372,6 +372,13 @@ False if it's sub exponential (e.g. linear)."""
 
 
 def eval_contfrac(a, b=None):
+    """a - a list of additive constant (first element) + denominator values (following elements)
+    b - a list of numerator values. If ommited, 1's are used.
+    If a and b are given and are of the same length, the additive constant is assumed to be 0 and is all denominators,
+    and the result is
+        b[0]/(a[0]+b[1]/...)
+   otherwise the result is
+       a[0]+b[0]/(a[1]+b[1]/...)"""
     if b is None:
         b = [1] * (len(a)-1)
     if len(a) == len(b):
@@ -387,14 +394,31 @@ def eval_contfrac(a, b=None):
     return res
 
 
-def eval_contfrac_by_polys(a, b, num_of_iters):
+def eval_contfrac_by_polys(a, b, calculation_depth):
+    """a, b are given as polynomials with an option to interlaced polynomials. See documentation for ContFrac for more
+    details.
+    Calculates the continued fraction into 'calculation_depth' depth."""
+    if isinstance(a[0], (int, dec)):
+        a = [a]
+    if isinstance(b[0], (int, dec)):
+        b = [b]
 
-    return eval_contfrac([ MathOperations.subs_in_polynom(a[i%len(a)], i) for i in range(num_of_iters)],
-                         [ MathOperations.subs_in_polynom(b[i%len(b)], i) for i in range(1,num_of_iters)])
+    return eval_contfrac([MathOperations.subs_in_polynom(a[i%len(a)], i) for i in range(calculation_depth)],
+                         [MathOperations.subs_in_polynom(b[i%len(b)], i) for i in range(1, calculation_depth)])
 
 
-def eval_dec_contfrac_by_polys(a, b, num_of_iters):
+def eval_dec_contfrac_by_polys(a, b, calculation_depth):
+    """a, b are given as polynomials with an option to interlaced polynomials. See documentation for ContFrac for more
+    details.
+    Calculates the continued fraction into 'calculation_depth' depth.
+    Calculations are done with Decimal, which enables arbitrary precision. Please set the Decimal context precision as
+    needed."""
+    if isinstance(a[0], (int, dec)):
+        a = [a]
+    if isinstance(b[0], (int, dec)):
+        b = [b]
+
     a = [ [ dec(i) for i in p ] for p in a ]
     b = [ [ dec(i) for i in p ] for p in b ]
-    return eval_contfrac([ MathOperations.subs_in_polynom(a[i % len(a)], i) for i in range(num_of_iters)],
-                         [ MathOperations.subs_in_polynom(b[i % len(b)], i) for i in range(1, num_of_iters)])
+    return eval_contfrac([ MathOperations.subs_in_polynom(a[i % len(a)], i) for i in range(calculation_depth) ],
+                         [ MathOperations.subs_in_polynom(b[i % len(b)], i) for i in range(1, calculation_depth) ])
