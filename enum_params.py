@@ -120,7 +120,7 @@ class MITM:
         self.filtered_params = []
 
 
-    def build_hashtable(self, range_a, range_b):
+    def build_hashtable(self, range_a, range_b, validate_entry_doesnt_exist=True):
         """Build a hashtable using the ranges for a, b. See the help for BasicEnumPolyParams.polys_generator for how
          range_a, range_b should be supplied.
          For each result continued fraction all the selected postproc functions will be applied on, and these results
@@ -130,13 +130,20 @@ class MITM:
         t = time.time()
         pg, pg_len = self.rhs_polys_enumer.polys_generator(range_a=range_a, range_b=range_b)
         print('Took %f seconds to create pg, pg_len' % (time.time()-t))
-        self._iter2hashtalbe(pg, pg_len)
+        self._iter2hashtalbe(itr=pg, itr_len=pg_len, validate_entry_doesnt_exist=validate_entry_doesnt_exist)
 
-    def _iter2hashtalbe(self, itr, itr_len, print_problematic=False):
+    def _iter2hashtalbe(self, itr, itr_len, validate_entry_doesnt_exist=True, print_problematic=False):
         """Converts the (a, b) polynomials generator itr of an (estimated) length itr_len to a contfrac hashtable."""
-        # filtered_postproc_funcs = [(i, f) for i,f in enumerate(self.postproc_funcs) if i in self.postproc_funcs_filter ]
-        # filtered_postproc_funcs = itertools.compress(enumerate(self.postproc_funcs), self.postproc_funcs_filter)
-        filtered_postproc_funcs = [(i, self.postproc_funcs[i]) for i in self.postproc_funcs_filter ]
+        filtered_postproc_funcs = { (i, self.postproc_funcs[i]) for i in self.postproc_funcs_filter }
+
+        ab_blacklist = {}
+        if validate_entry_doesnt_exist:
+            for k, v in self.dec_hashtable.items():
+                if k == 'parameters':
+                    continue
+                for ab, postproc_func_ind in v:
+                    ab_blacklist.setdefault(ab, set()).add(postproc_func_ind)
+
 
         print('The following is a rough estimation only, and may be wrong to an order of 2-5 times.')
         # This was an attempt to update the progressbar only once in 50 iterations, to speed things up.
@@ -147,6 +154,14 @@ class MITM:
         #             continue
         #         cont_frac, pa, pb = iter_element
         for pa, pb in progressbar.progressbar(itr, max_value=itr_len):
+            if (pa, pb) in ab_blacklist:
+                postproc_funcs_to_eval = filtered_postproc_funcs - ab_blacklist[(pa, pb)]
+                # if no new postproc functions to evaluate for this pa, pb, skip
+                if not postproc_funcs_to_eval:
+                    continue
+            else:
+                postproc_funcs_to_eval = filtered_postproc_funcs
+
             try:
                 cur_cont_frac_val = cont_fracs.eval_dec_contfrac_by_polys(pa, pb, self._polys_enumer_num_of_iterations)
             except (DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation):
@@ -161,7 +176,7 @@ class MITM:
                     print('problematic number')
                     print(cur_cont_frac_val)
                 continue
-            for post_func_ind, post_f in filtered_postproc_funcs:
+            for post_func_ind, post_f in postproc_funcs_to_eval:
                 # print(cur_cont_frac_val)
                 # Seems redundant - we're already enumerating only filtered functions
                 # if post_func_ind not in self.postproc_funcs_filter:
@@ -176,10 +191,8 @@ class MITM:
                 k = abs(k)
                 if self.trunc_integer:
                     k -= int(k)
-                if k not in self.dec_hashtable:
-                    self.dec_hashtable[k] = []
-                if ((pa, pb), post_func_ind) not in self.dec_hashtable[k]:
-                    self.dec_hashtable[k].append(((pa, pb), post_func_ind))
+                if ((pa, pb), post_func_ind) not in self.dec_hashtable.get(k, []):
+                    self.dec_hashtable.setdefault(k, []).append(((pa, pb), post_func_ind))
         print()
 
     def find_clicks(self, lhs_classes, lhs_enumerator_params):
