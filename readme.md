@@ -7,6 +7,9 @@ Generation of continuous fractions identities.
 1) git lfs (large files storage) is used. Download and install it from [here](https://git-lfs.github.com/), and from the repository directory run:
 ```
 git lfs install
+```
+if .gitattributes wasn't pulled from the repository for some reason, run:
+```
 git lfs track "hashtable_*.pkl"
 ```
 

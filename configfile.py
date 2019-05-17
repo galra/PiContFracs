@@ -80,6 +80,8 @@ class ConfigParser(configparser.ConfigParser):
         May raise a ValueError exception if the filename doesn't follow the format filename(_v[xx]).pkl"""
         hashtable_file_operation = self._config['hashtable_file_operation']
         dir_path, filename = os.path.split(self._config['hashtable_file'])
+        if not dir_path:
+            dir_path = '.'
         if not filename:
             return
 
@@ -205,7 +207,7 @@ CONFIG_PARAMS_TYPES = {'const': ConfigParser.string_parameter_parser,
                        'ab_polys_type': ConfigParser.poly_type_parser,
                        'ab_polys_special_params': json.loads,
                        'print_surprising_nonexp_contfracs': ConfigParser.bool_parser,
-                       'gen_hashtable_only': ConfigParser.bool_parser,
+                       'gen_hashtable_only': ConfigParser.string_parameter_parser,
                        # json is used to support interlace lists
                        'a_coeffs_range': json.loads,
                        'b_coeffs_range': json.loads,
