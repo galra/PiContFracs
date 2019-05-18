@@ -3,7 +3,8 @@
  Some more features are supplied, such as dynamic accuracy (the stored keys' accuracy may be redefined), support for
  serialization by dill/pickle and (perhaps) more."""
 
-from decimal import Decimal as dec
+# from decimal import Decimal as dec
+from mpmath import mpf as dec
 
 # TODO: might be possible to enhance efficiency by using dec.quantize to round to the required accuracy
 # TODO: IMPORTANT! We're exposed to num. errs. A "rounding" func is needed. Here and in "compare_dec_with_accuracy".

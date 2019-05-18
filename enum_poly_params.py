@@ -3,13 +3,17 @@
 import itertools
 from functools import wraps
 import cont_fracs
-from decimal import Decimal as dec
-import decimal
+## # from decimal import Decimal as dec
+## # import decimal
+from mpmath import mpf as dec, isint
+from mpmath import isint
+import mpmath
 from scipy.special import binom
 
 def set_precision(prec):
     """Sets the precision of the current decimal context"""
-    decimal.getcontext().prec=prec
+    ## # decimal.getcontext().prec=prec
+    mpmath.mp.dps = prec
 
 def _len_decorator(func):
     """Used as a decorator to estimated the length of a generator with signature:
@@ -148,16 +152,18 @@ class BasicEnumPolyParams(metaclass=NormalMetaClass):
             return True
         elif len(poly) == 1:
             return False
-        elif len(poly) == 2 and (poly[0] / poly[1]).is_integer() and (poly[0] > 0) != (poly[1] > 0):
+        ## # elif len(poly) == 2 and (poly[0] / poly[1]).is_integer() and (poly[0] > 0) != (poly[1] > 0):
+        elif len(poly) == 2 and isint(poly[0] / poly[1]) and (poly[0] > 0) != (poly[1] > 0):
             return True
         elif len(poly) == 3:
             discrim = (poly[1]**2-4*poly[0]*poly[2])
             if discrim < 0:
                 return False
             discrim **= 0.5
-            if ((discrim - poly[1])/(2*poly[0])).is_integer():
+            ## # if ((discrim - poly[1])/(2*poly[0])).is_integer():
+            if isint((discrim - poly[1])/(2*poly[0])):
                 return True
-            if ((-discrim - poly[1])/(2*poly[0])).is_integer():
+            if isint((-discrim - poly[1])/(2*poly[0])):
                 return True
 
         return False

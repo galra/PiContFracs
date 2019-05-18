@@ -1,7 +1,8 @@
 """Implements a continued fraction class."""
 
 import basic_representation_types
-from decimal import Decimal as dec
+# from decimal import Decimal as dec
+from mpmath import mpf as dec, isnormal, isnan, mp
 from gen_consts import gen_pi_const
 import math
 import scipy.stats # used for the linear regression fitting
@@ -94,7 +95,7 @@ class ContFrac(basic_representation_types.BasicContFracAlgo):
         if self._logging:
             p_i = dec(new_p_vec[0])
             q_i = dec(new_q_vec[0])
-            if q_i.is_zero():
+            if not isnormal(q_i):
                 contfrac_res_i = dec('NaN')
             else:
                 contfrac_res_i = p_i / q_i
@@ -111,7 +112,7 @@ class ContFrac(basic_representation_types.BasicContFracAlgo):
         p_vec, q_vec = promo_mat
         p = dec(p_vec[0])
         q = dec(q_vec[0])
-        if q.is_zero():
+        if not isnormal(q):
             contfrac_res = dec('NaN')
         else:
             contfrac_res = p / q
@@ -154,7 +155,8 @@ class ContFrac(basic_representation_types.BasicContFracAlgo):
 
     def is_result_valid(self):
         """Makes sure that the result isn't zero, infinity, NaN or subnormal."""
-        return self._params_log['contfrac_res'][-1].is_normal()
+        # return self._params_log['contfrac_res'][-1].is_normal()
+        return mpmath.isnormal(self._params_log['contfrac_res'][-1])
 
     def estimate_approach_type_and_params(self, iters=600, initial_cutoff=200, iters_step=50):
         """See self._estimate_approach_type_and_params_inner_alg. Sorry homies :("""
@@ -246,6 +248,8 @@ False if it's sub exponential (e.g. linear)."""
         # See the "convergence_analysis.pdf" file for further details about theory behind this function.
         # It evaluates and categorizes by computing linear fitting to the error/iterations plot. Regular or logarithmic.
 
+        effective_zero = dec(10)**-mp.dps
+
         if iters_step < 6:
             ValueError('iters_step should be at least 4')
 
@@ -292,9 +296,9 @@ False if it's sub exponential (e.g. linear)."""
 
         pair_diminish = False
         odd_diminish = False
-        if len(delta_pair) > 3 and all([ p[1].is_zero() for p in delta_pair[-3:] ]):
+        if len(delta_pair) > 3 and all([ abs(p[1]) < effective_zero  for p in delta_pair[-3:] ]):
             pair_diminish = True
-        if len(delta_odd) > 3 and all([ p[1].is_zero() for p in delta_odd[-3:] ]):
+        if len(delta_odd) > 3 and all([ abs(p[1]) < effective_zero for p in delta_odd[-3:] ]):
             odd_diminish = True
         # if one diminishes and the other isn't, return 'undefined'
         if pair_diminish ^ odd_diminish:
@@ -307,10 +311,10 @@ False if it's sub exponential (e.g. linear)."""
 
         pair_ratio = [ (delta_pair[i][0], delta_pair[i][1] / delta_pair[i+1][1])
                        for i in range(0, len(delta_pair), 2) if delta_pair[i][1] != 0 and delta_pair[i+1][1] != 0 and
-                       not delta_pair[i][1].is_nan() and not delta_pair[i+1][1].is_nan() ]
+                       not isnan(delta_pair[i][1]) and not isnan(delta_pair[i+1][1]) ]
         odd_ratio = [ (delta_odd[i][0], delta_odd[i][1] / delta_odd[i+1][1])
                       for i in range(0, len(delta_odd), 2) if delta_odd[i][1] != 0 and delta_odd[i+1][1] != 0 and
-                      not delta_odd[i][1].is_nan() and not delta_odd[i+1][1].is_nan() ]
+                      not isnan(delta_odd[i][1]) and not isnan(delta_odd[i+1][1]) ]
 
         if len(pair_ratio) < 6:
             return (approach_type, approach_parameter)
@@ -342,11 +346,11 @@ False if it's sub exponential (e.g. linear)."""
                 approach_parameter = min(approach_parameter_pair, approach_parameter_odd)
                 approach_coeff_pair_list = [ abs(delta_pair[i][1] * approach_parameter**(delta_pair[i][0]) /
                                         (1 - approach_parameter**(-2))) for i in range(0, len(delta_pair))
-                                         if delta_pair[i][1] != 0 and not delta_pair[i][1].is_nan() ]
+                                         if delta_pair[i][1] != 0 and not isnan(delta_pair[i][1]) ]
                 approach_coeff_pair = sum(approach_coeff_pair_list) / len(approach_coeff_pair_list)
                 approach_coeff_odd_list = [ abs(delta_odd[i][1] * approach_parameter**(delta_odd[i][0]) /
                                        (1 - approach_parameter**(-2))) for i in range(0, len(delta_odd))
-                                       if delta_odd[i][1] != 0 and not delta_odd[i][1].is_nan() ]
+                                       if delta_odd[i][1] != 0 and not isnan(delta_odd[i][1]) ]
                 approach_coeff_odd = sum(approach_coeff_odd_list) / len(approach_coeff_odd_list)
                 approach_coeff = min(approach_coeff_pair, approach_coeff_odd)
                 approach_parameter = (approach_parameter, approach_coeff)

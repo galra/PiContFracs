@@ -5,9 +5,9 @@ with the continued fractions up to an arbitrary decimal precision."""
 
 import cont_fracs
 from decimal_hashtable import DecimalHashTable
-from decimal import Decimal as dec
-import decimal
-from decimal import DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation
+## # from decimal import Decimal as dec
+from mpmath import mpf as dec, isnormal
+## # from decimal import DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation
 from gen_consts import gen_pi_const
 import csv
 from latex import latex_cont_frac
@@ -164,18 +164,18 @@ class MITM:
 
             try:
                 cur_cont_frac_val = cont_fracs.eval_dec_contfrac_by_polys(pa, pb, self._polys_enumer_num_of_iterations)
-            except (DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation):
+            ## # except (DivisionByZero, DivisionUndefined, DivisionImpossible, InvalidOperation):
+            except ZeroDivisionError:
                 continue
-            # is_normal = finite nonzero, not NaN, with exponent > Emin=-999999999999999999
-            if not cur_cont_frac_val.is_normal():
-                continue
-
-            # this tries to replace the previous 'problematic number' check, it haven't been tested yet
-            if not cur_cont_frac_val.is_normal():
+            ## # # is_normal = finite nonzero, not NaN, with exponent > Emin=-999999999999999999
+            ## # if not cur_cont_frac_val.is_normal():
+            # is_normal = finite nonzero, not NaN
+            if not isnormal(cur_cont_frac_val):
                 if print_problematic:
                     print('problematic number')
                     print(cur_cont_frac_val)
                 continue
+
             for post_func_ind, post_f in postproc_funcs_to_eval:
                 # print(cur_cont_frac_val)
                 # Seems redundant - we're already enumerating only filtered functions
@@ -186,7 +186,8 @@ class MITM:
                 except:
                     print(k)
                     raise
-                if not k.is_normal():
+                ## # if not k.is_normal():
+                if not isnormal(k):
                     continue
                 k = abs(k)
                 if self.trunc_integer:
@@ -272,11 +273,14 @@ class MITM:
         for ab, lhs_res_obj, post_func_ind, convergence_info in progressbar.progressbar(self.filtered_params):
             try:
                 signed_rhs = self.postproc_funcs[post_func_ind](contfrac_evaluator(ab, accuracy, convergence_info))
-            except decimal.DivisionByZero:
-                print('DivisionByZero exception', ab)
+            ## # except DivisionByZero:
+            except ZeroDivisionError:
+                ## # print('DivisionByZero exception', ab)
+                print('ZeroDivisionError exception', ab)
                 continue
             rhs = abs(signed_rhs)
-            if not rhs.is_normal():
+            ## # if not rhs.is_normal():
+            if not isnormal(rhs):
                 continue
             signed_lhs = lhs_res_obj.get_val()
             lhs = abs(signed_lhs)
