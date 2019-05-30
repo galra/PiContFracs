@@ -1,7 +1,7 @@
 atomicwrites==1.3.0
 attrs==19.1.0
 colorama==0.4.1
-DecMath==0.4.0
+#DecMath==0.4.0
 dill==0.2.8.2
 gryphon-cdecimal==2.3
 more-itertools==7.0.0
